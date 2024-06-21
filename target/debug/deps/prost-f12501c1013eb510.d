@@ -1,0 +1,10 @@
+/Users/charliewarner/Documents/Programming/Projects/Galactic-Guide/target/debug/deps/libprost-f12501c1013eb510.rmeta: /Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/prost-0.11.9/src/lib.rs /Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/prost-0.11.9/src/error.rs /Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/prost-0.11.9/src/message.rs /Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/prost-0.11.9/src/types.rs /Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/prost-0.11.9/src/encoding.rs /Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/prost-0.11.9/src/../README.md
+
+/Users/charliewarner/Documents/Programming/Projects/Galactic-Guide/target/debug/deps/prost-f12501c1013eb510.d: /Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/prost-0.11.9/src/lib.rs /Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/prost-0.11.9/src/error.rs /Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/prost-0.11.9/src/message.rs /Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/prost-0.11.9/src/types.rs /Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/prost-0.11.9/src/encoding.rs /Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/prost-0.11.9/src/../README.md
+
+/Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/prost-0.11.9/src/lib.rs:
+/Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/prost-0.11.9/src/error.rs:
+/Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/prost-0.11.9/src/message.rs:
+/Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/prost-0.11.9/src/types.rs:
+/Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/prost-0.11.9/src/encoding.rs:
+/Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/prost-0.11.9/src/../README.md:
