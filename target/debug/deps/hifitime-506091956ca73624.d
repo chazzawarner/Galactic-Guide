@@ -1,9 +1,0 @@
-/Users/charliewarner/Documents/Programming/Projects/Galactic-Guide/target/debug/deps/libhifitime-506091956ca73624.rmeta: /Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/hifitime-3.3.0/src/lib.rs /Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/hifitime-3.3.0/src/epoch.rs /Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/hifitime-3.3.0/src/duration.rs /Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/hifitime-3.3.0/src/timeseries.rs /Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/hifitime-3.3.0/src/../README.md
-
-/Users/charliewarner/Documents/Programming/Projects/Galactic-Guide/target/debug/deps/hifitime-506091956ca73624.d: /Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/hifitime-3.3.0/src/lib.rs /Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/hifitime-3.3.0/src/epoch.rs /Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/hifitime-3.3.0/src/duration.rs /Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/hifitime-3.3.0/src/timeseries.rs /Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/hifitime-3.3.0/src/../README.md
-
-/Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/hifitime-3.3.0/src/lib.rs:
-/Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/hifitime-3.3.0/src/epoch.rs:
-/Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/hifitime-3.3.0/src/duration.rs:
-/Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/hifitime-3.3.0/src/timeseries.rs:
-/Users/charliewarner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/hifitime-3.3.0/src/../README.md:
