@@ -1,171 +1,120 @@
+use std::f32::consts::PI;
+
+use bevy::{
+    prelude::*,
+    render::{
+        render_asset::RenderAssetUsages,
+        render_resource::{Extent3d, TextureDimension, TextureFormat},
+    },
+};
+
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 
-use bevy::{prelude::*, window::PrimaryWindow};
-
-// Define a resource struct to store the occupied screen space
-#[derive(Default, Resource)]
-struct OccupiedScreenSpace {
-    left: f32,
-    top: f32,
-    right: f32,
-    bottom: f32,
-}
-
-// Define a constant for the camera target position
-const CAMERA_TARGET: Vec3 = Vec3::ZERO;
-
-// Define a resource struct to store the original camera transform
-#[derive(Resource, Deref, DerefMut)]
-struct OriginalCameraTransform(Transform);
+use smooth_bevy_cameras::{
+    controllers::orbit::{OrbitCameraBundle, OrbitCameraController, OrbitCameraPlugin},
+    LookTransformPlugin,
+};
 
 fn main() {
-    // Create a new Bevy app
     App::new()
-        // Add default plugins
-        .add_plugins(DefaultPlugins
-            // Configure the primary window
-            .set(WindowPlugin {
-                primary_window: Some(Window {
-                    title: "Galactic Guide".to_string(),
-                    ..Default::default()
-                }),
-                ..Default::default()
-            })
-        )
-        // Add the Egui plugin
+        .add_plugins(DefaultPlugins)
         .add_plugins(EguiPlugin)
-        // Initialize the occupied screen space resource
-        .init_resource::<OccupiedScreenSpace>()
-        // Add startup and setup systems
-        .add_systems(Startup, setup_system)
-        // Add update systems
-        .add_systems(Update, ui_example_system)
-        .add_systems(Update, update_camera_transform_system)
-        // Run the app
+        .add_plugins(LookTransformPlugin)
+        .add_plugins(OrbitCameraPlugin::default())
+        .add_systems(Startup, setup)
+        .add_systems(Update, orbit_editor_ui)
         .run();
 }
 
-// System to handle UI example
-fn ui_example_system(
-    mut contexts: EguiContexts,
-    mut occupied_screen_space: ResMut<OccupiedScreenSpace>,
-) {
-    let ctx = contexts.ctx_mut();
-
-    // Update the occupied screen space based on the UI panels
-    occupied_screen_space.left = egui::SidePanel::left("left_panel")
-        .resizable(true)
-        .show(ctx, |ui| {
-            ui.label("Left resizeable panel");
-            ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
-        })
-        .response
-        .rect
-        .width();
-    occupied_screen_space.right = egui::SidePanel::right("right_panel")
-        .resizable(true)
-        .show(ctx, |ui| {
-            ui.label("Right resizeable panel");
-            ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
-        })
-        .response
-        .rect
-        .width();
-    occupied_screen_space.top = egui::TopBottomPanel::top("top_panel")
-        .resizable(true)
-        .show(ctx, |ui| {
-            ui.label("Top resizeable panel");
-            ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
-        })
-        .response
-        .rect
-        .height();
-    occupied_screen_space.bottom = egui::TopBottomPanel::bottom("bottom_panel")
-        .resizable(true)
-        .show(ctx, |ui| {
-            ui.label("Bottom resizeable panel");
-            ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
-        })
-        .response
-        .rect
-        .height();
-}
-
-// System to setup the initial scene
-fn setup_system(
+// Setup 3D scene
+fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut images: ResMut<Assets<Image>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // Spawn a plane
+    // Setup debug material
+    let debug_material = materials.add(StandardMaterial {
+        base_color_texture: Some(images.add(uv_debug_texture())),
+        ..default()
+    });
+
+    // Create a cube with debug material
     commands.spawn(PbrBundle {
-        mesh: meshes.add(Plane3d::default().mesh().size(5.0, 5.0)),
-        material: materials.add(Color::rgb(0.3, 0.5, 0.3)),
+        mesh: meshes.add(Cuboid::default()),
+        material: debug_material.clone(),
+        transform: Transform::from_xyz(0., 0., 3.)
+        .with_rotation(Quat::from_rotation_x(-PI / 4.)),
         ..Default::default()
     });
 
-    // Spawn a cuboid
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Cuboid::new(1.0, 1.0, 1.0)),
-        material: materials.add(Color::rgb(0.8, 0.7, 0.6)),
-        transform: Transform::from_xyz(0.0, 0.5, 0.0),
-        ..Default::default()
-    });
-
-    // Spawn a point light
+    // Create a light
     commands.spawn(PointLightBundle {
         point_light: PointLight {
-            intensity: 1500.0,
             shadows_enabled: true,
-            ..Default::default()
+            intensity: 10_000_000.,
+            range: 100.0,
+            shadow_depth_bias: 0.2,
+            ..default()
         },
-        transform: Transform::from_xyz(4.0, 8.0, 4.0),
-        ..Default::default()
+        transform: Transform::from_xyz(8.0, 16.0, 8.0),
+        ..default()
     });
 
-    // Set up the camera
-    let camera_pos = Vec3::new(-2.0, 2.5, 5.0);
-    let camera_transform =
-        Transform::from_translation(camera_pos).looking_at(CAMERA_TARGET, Vec3::Y);
-    commands.insert_resource(OriginalCameraTransform(camera_transform));
-
-    commands.spawn(Camera3dBundle {
-        transform: camera_transform,
-        ..Default::default()
+    // Create a ground plane
+    commands.spawn(PbrBundle {
+        mesh: meshes.add(Plane3d::default().mesh().size(10.0, 10.0)),
+        material: materials.add(Color::rgb(0.5, 0.5, 0.5)),
+        ..default()
     });
+
+    // Create a camera
+    /*commands.spawn(Camera3dBundle {
+        transform: Transform::from_xyz(0.0, 7., 14.0).looking_at(Vec3::new(0., 1., 0.), Vec3::Y),
+        ..default()
+    });*/
+    commands
+        .spawn(Camera3dBundle::default())
+        .insert(OrbitCameraBundle::new(
+            OrbitCameraController::default(),
+            Vec3::new(0.0, 7., 14.0),
+            Vec3::new(0., 1., 0.),
+            Vec3::Y,
+        ));
 }
 
-// System to update the camera transform
-fn update_camera_transform_system(
-    occupied_screen_space: Res<OccupiedScreenSpace>,
-    original_camera_transform: Res<OriginalCameraTransform>,
-    windows: Query<&Window, With<PrimaryWindow>>,
-    mut camera_query: Query<(&Projection, &mut Transform)>,
-) {
-    let (camera_projection, mut transform) = match camera_query.get_single_mut() {
-        Ok((Projection::Perspective(projection), transform)) => (projection, transform),
-        _ => unreachable!(),
-    };
+// Creates a colorful test pattern
+fn uv_debug_texture() -> Image {
+    const TEXTURE_SIZE: usize = 8;
 
-    // Calculate the frustum dimensions based on the camera projection
-    let distance_to_target = (CAMERA_TARGET - original_camera_transform.translation).length();
-    let frustum_height = 2.0 * distance_to_target * (camera_projection.fov * 0.5).tan();
-    let frustum_width = frustum_height * camera_projection.aspect_ratio;
+    let mut palette: [u8; 32] = [
+        255, 102, 159, 255, 255, 159, 102, 255, 236, 255, 102, 255, 121, 255, 102, 255, 102, 255,
+        198, 255, 102, 198, 255, 255, 121, 102, 255, 255, 236, 102, 255, 255,
+    ];
 
-    // Get the primary window
-    let window = windows.single();
+    let mut texture_data = [0; TEXTURE_SIZE * TEXTURE_SIZE * 4];
+    for y in 0..TEXTURE_SIZE {
+        let offset = TEXTURE_SIZE * y * 4;
+        texture_data[offset..(offset + TEXTURE_SIZE * 4)].copy_from_slice(&palette);
+        palette.rotate_right(4);
+    }
 
-    // Calculate the taken screen space on each side
-    let left_taken = occupied_screen_space.left / window.width();
-    let right_taken = occupied_screen_space.right / window.width();
-    let top_taken = occupied_screen_space.top / window.height();
-    let bottom_taken = occupied_screen_space.bottom / window.height();
+    Image::new_fill(
+        Extent3d {
+            width: TEXTURE_SIZE as u32,
+            height: TEXTURE_SIZE as u32,
+            depth_or_array_layers: 1,
+        },
+        TextureDimension::D2,
+        &texture_data,
+        TextureFormat::Rgba8UnormSrgb,
+        RenderAssetUsages::RENDER_WORLD,
+    )
+}
 
-    // Update the camera transform based on the occupied screen space
-    transform.translation = original_camera_transform.translation
-        + transform.rotation.mul_vec3(Vec3::new(
-            (right_taken - left_taken) * frustum_width * 0.5,
-            (top_taken - bottom_taken) * frustum_height * 0.5,
-            0.0,
-        ));
+// Orbit editor modal UI
+fn orbit_editor_ui(mut contexts: EguiContexts) {
+    egui::Window::new("Orbit Parameters").show(contexts.ctx_mut(), |ui| {
+        ui.label("world");
+    });
 }
