@@ -16,6 +16,10 @@ use smooth_bevy_cameras::{
     LookTransformPlugin,
 };
 
+struct AppState {
+    bodies: Vec<CelestialBody>,
+}
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
@@ -42,22 +46,8 @@ fn setup(
     });
 
     // Create an earth using the CelestialBody struct
-    let earth = CelestialBody::new("Earth", 5.0);
-
-    // Setup earth material
-    let earth_texture_handle: Handle<Image> = asset_server.load("textures/earth.png");
-    let earth_material = materials.add(StandardMaterial {
-        base_color_texture: Some(earth_texture_handle),
-        ..default()
-    });
-
-    // Create a sphere with earth texture
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Sphere::new(earth.radius)),
-        material: earth_material,
-        transform: Transform::from_xyz(0., 3., 0.),
-        ..default()
-    });
+    let earth = CelestialBody::new("Earth", 5.0, Vec3::new(0.0, 0.0, 3.0));
+    earth.spawn(&mut commands, &asset_server, &mut meshes, &mut materials);
     
 
     // Create a light
