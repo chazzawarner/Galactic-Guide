@@ -11,7 +11,7 @@ use bevy::{
 pub struct CelestialBody {
     name: String,
     pub radius: f32,
-    position: Vec3,
+    pub position: Vec3,
 }
 
 impl CelestialBody {
@@ -29,7 +29,7 @@ impl CelestialBody {
         asset_server: &Res<AssetServer>, 
         materials: &mut ResMut<Assets<StandardMaterial>>
     ) -> Handle<StandardMaterial> {
-        let image_path = format!("textures/{}.jpg", self.name.to_lowercase()).to_string();
+        let image_path = format!("textures/{}.png", self.name.to_lowercase()).to_string();
         let texture_handle: Handle<Image> = asset_server.load(image_path);
         materials.add(StandardMaterial {
             base_color_texture: Some(texture_handle),

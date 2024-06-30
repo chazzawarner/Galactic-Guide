@@ -9,15 +9,17 @@ use bevy::{
     },
 };
 
-use bevy_egui::{egui, EguiContexts, EguiPlugin};
+use bevy_egui::{egui::{self, pos2}, EguiContexts, EguiPlugin};
 
 use smooth_bevy_cameras::{
     controllers::orbit::{OrbitCameraBundle, OrbitCameraController, OrbitCameraPlugin},
     LookTransformPlugin,
 };
 
+#[derive(Resource, Default)]
 struct AppState {
     bodies: Vec<CelestialBody>,
+    selected_body: usize,
 }
 
 fn main() {
@@ -39,10 +41,31 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
     asset_server: Res<AssetServer>,
 ) {
-    // Create an earth using the CelestialBody struct
+    /* // Create an earth using the CelestialBody struct
     let earth = CelestialBody::new("Earth", 5.0, Vec3::new(0.0, 0.0, 3.0));
-    earth.spawn(&mut commands, &asset_server, &mut meshes, &mut materials);
-    
+    earth.spawn(&mut commands, &asset_server, &mut meshes, &mut materials);*/
+
+    // Create list of bodies
+    let bodies = vec![
+        CelestialBody::new("Sun", 10.0, Vec3::new(0.0, 0.0, 0.0)),
+        CelestialBody::new("Mercury", 0.5, Vec3::new(15.0, 0.0, 0.0)),
+        CelestialBody::new("Venus", 1.0, Vec3::new(20.0, 0.0, 0.0)),
+        CelestialBody::new("Earth", 1.0, Vec3::new(25.0, 0.0, 0.0)),
+        CelestialBody::new("Mars", 0.5, Vec3::new(30.0, 0.0, 0.0)),
+        CelestialBody::new("Jupiter", 2.0, Vec3::new(35.0, 0.0, 0.0)),
+        CelestialBody::new("Saturn", 1.5, Vec3::new(40.0, 0.0, 0.0)),
+        CelestialBody::new("Uranus", 1.0, Vec3::new(45.0, 0.0, 0.0)),
+        CelestialBody::new("Neptune", 1.0, Vec3::new(50.0, 0.0, 0.0)),
+    ];
+
+
+    // Spawn the bodies
+    for body in bodies.iter() {
+        body.spawn(&mut commands, &asset_server, &mut meshes, &mut materials);
+    }
+
+
+
 
     // Create a light
     commands.spawn(PointLightBundle {
@@ -72,12 +95,30 @@ fn setup(
             Vec3::new(0., 1., 0.),
             Vec3::Y,
         ));
+
+    // Add app_state to resource map
+    commands.insert_resource(AppState { bodies, selected_body: 0 });
 }
 
 
 // Orbit editor modal UI
-fn orbit_editor_ui(mut contexts: EguiContexts) {
+fn orbit_editor_ui(mut contexts: EguiContexts, mut app_state: ResMut<AppState>) {
     egui::Window::new("Orbit Parameters").show(contexts.ctx_mut(), |ui| {
         ui.label("world");
+        ui.separator();
+
+        // Setup test combo box
+        let alternatives = ["Sun", "Mercury", "Venus", "Earth", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"];
+
+        egui::ComboBox::from_label("Select one!").show_index(
+            ui,
+            &mut app_state.selected_body,
+            alternatives.len(),
+            |i| alternatives[i]
+        );
+
+        // Display the selected celestial body
+        ui.label(format!("Selected body: {}", alternatives[app_state.selected_body]));
+
     });
 }
