@@ -1,4 +1,5 @@
-use std::f32::consts::PI;
+mod celestial_body;
+use celestial_body::CelestialBody;
 
 use bevy::{
     prelude::*,
@@ -32,6 +33,7 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut images: ResMut<Assets<Image>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
     // Setup debug material
     let debug_material = materials.add(StandardMaterial {
@@ -39,14 +41,24 @@ fn setup(
         ..default()
     });
 
-    // Create a cube with debug material
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Cuboid::default()),
-        material: debug_material.clone(),
-        transform: Transform::from_xyz(0., 0., 3.)
-        .with_rotation(Quat::from_rotation_x(-PI / 4.)),
-        ..Default::default()
+    // Create an earth using the CelestialBody struct
+    let earth = CelestialBody::new("Earth", 5.0);
+
+    // Setup earth material
+    let earth_texture_handle: Handle<Image> = asset_server.load("textures/earth.png");
+    let earth_material = materials.add(StandardMaterial {
+        base_color_texture: Some(earth_texture_handle),
+        ..default()
     });
+
+    // Create a sphere with earth texture
+    commands.spawn(PbrBundle {
+        mesh: meshes.add(Sphere::new(earth.radius)),
+        material: earth_material,
+        transform: Transform::from_xyz(0., 3., 0.),
+        ..default()
+    });
+    
 
     // Create a light
     commands.spawn(PointLightBundle {
@@ -68,11 +80,6 @@ fn setup(
         ..default()
     });
 
-    // Create a camera
-    /*commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(0.0, 7., 14.0).looking_at(Vec3::new(0., 1., 0.), Vec3::Y),
-        ..default()
-    });*/
     commands
         .spawn(Camera3dBundle::default())
         .insert(OrbitCameraBundle::new(
