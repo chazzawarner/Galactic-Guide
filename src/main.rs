@@ -1,5 +1,5 @@
 mod celestial_body;
-use celestial_body::CelestialBody;
+use celestial_body::{CelestialBody, CelestialBodyType, CelestialBodyId, SolarSystem};
 
 use bevy::{
     prelude::*,
@@ -16,10 +16,15 @@ use smooth_bevy_cameras::{
     LookTransformPlugin,
 };
 
+use strum::IntoEnumIterator;
+
+
+
 #[derive(Resource, Default)]
 struct AppState {
-    bodies: Vec<CelestialBody>,
-    selected_body: usize,
+    solar_system: SolarSystem,
+    selected_body: CelestialBodyId,
+    drawn_bodies: Vec<Entity>,
 }
 
 fn main() {
@@ -41,31 +46,12 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
     asset_server: Res<AssetServer>,
 ) {
-    /* // Create an earth using the CelestialBody struct
-    let earth = CelestialBody::new("Earth", 5.0, Vec3::new(0.0, 0.0, 3.0));
-    earth.spawn(&mut commands, &asset_server, &mut meshes, &mut materials);*/
-
-    // Create list of bodies
-    let bodies = vec![
-        CelestialBody::new("Sun", 10.0, Vec3::new(0.0, 0.0, 0.0)),
-        CelestialBody::new("Mercury", 0.5, Vec3::new(15.0, 0.0, 0.0)),
-        CelestialBody::new("Venus", 1.0, Vec3::new(20.0, 0.0, 0.0)),
-        CelestialBody::new("Earth", 1.0, Vec3::new(25.0, 0.0, 0.0)),
-        CelestialBody::new("Mars", 0.5, Vec3::new(30.0, 0.0, 0.0)),
-        CelestialBody::new("Jupiter", 2.0, Vec3::new(35.0, 0.0, 0.0)),
-        CelestialBody::new("Saturn", 1.5, Vec3::new(40.0, 0.0, 0.0)),
-        CelestialBody::new("Uranus", 1.0, Vec3::new(45.0, 0.0, 0.0)),
-        CelestialBody::new("Neptune", 1.0, Vec3::new(50.0, 0.0, 0.0)),
-    ];
-
+    // Create a solar system, selecting default body
+    let mut solar_system = SolarSystem::new();
+    let selected_body = CelestialBodyId::default();
 
     // Spawn the bodies
-    for body in bodies.iter() {
-        body.spawn(&mut commands, &asset_server, &mut meshes, &mut materials);
-    }
-
-
-
+    let drawn_bodies = solar_system.spawn_visible(&mut commands, &asset_server, &mut meshes, &mut materials, selected_body);
 
     // Create a light
     commands.spawn(PointLightBundle {
@@ -97,28 +83,54 @@ fn setup(
         ));
 
     // Add app_state to resource map
-    commands.insert_resource(AppState { bodies, selected_body: 0 });
+    commands.insert_resource(AppState { solar_system, selected_body, drawn_bodies });
 }
 
+// Replace bodies upon update
+fn replace_bodies(mut app_state: ResMut<AppState>, mut commands: Commands, asset_server: Res<AssetServer>, mut meshes: ResMut<Assets<Mesh>>, mut materials: ResMut<Assets<StandardMaterial>>) {
+    // Despawn the drawn bodies
+    for entity in app_state.drawn_bodies.iter() {
+        commands.entity(*entity).despawn();
+    }
+
+    // Spawn the new bodies
+    let selected_body = app_state.selected_body.clone();
+    let drawn_bodies = app_state.solar_system.spawn_visible(&mut commands, &asset_server, &mut meshes, &mut materials, selected_body);
+    app_state.drawn_bodies = drawn_bodies;
+}
 
 // Orbit editor modal UI
-fn orbit_editor_ui(mut contexts: EguiContexts, mut app_state: ResMut<AppState>) {
+fn orbit_editor_ui(mut contexts: EguiContexts, mut app_state: ResMut<AppState>, mut commands: Commands, asset_server: Res<AssetServer>, mut meshes: ResMut<Assets<Mesh>>, mut materials: ResMut<Assets<StandardMaterial>>) {
     egui::Window::new("Orbit Parameters").show(contexts.ctx_mut(), |ui| {
         ui.label("world");
         ui.separator();
 
-        // Setup test combo box
-        let alternatives = ["Sun", "Mercury", "Venus", "Earth", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"];
+        // Setup test combo box, using strum to get all the celestial body ids in a list
+        let alternatives = Vec::from_iter(CelestialBodyId::iter());
+
+        // Get app state
+        let mut selected_body = app_state.selected_body;
+
+        // Find index of selected body
+        let mut selected_body_index = alternatives.iter().position(|&x| x == selected_body).unwrap();
 
         egui::ComboBox::from_label("Select one!").show_index(
             ui,
-            &mut app_state.selected_body,
+            &mut selected_body_index,
             alternatives.len(),
-            |i| alternatives[i]
+            |i| format!("{:?}", alternatives[i])
         );
 
+        // Check if the selected index has changed, and if so, update the selected_body in AppState
+        if selected_body_index != alternatives.iter().position(|&x| x == app_state.selected_body).unwrap() {
+            app_state.selected_body = alternatives[selected_body_index];
+
+            // Replace the bodies
+            replace_bodies(app_state, commands, asset_server, meshes, materials);
+        }
+
         // Display the selected celestial body
-        ui.label(format!("Selected body: {}", alternatives[app_state.selected_body]));
+        ui.label(format!("Selected body: {:?}", alternatives[selected_body_index]));
 
     });
 }

@@ -1,0 +1,82 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'galactic_guide'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=galactic_guide",
+                    "--package=galactic_guide"
+                ],
+                "filter": {
+                    "name": "galactic_guide",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'galactic_guide'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=galactic_guide",
+                    "--package=galactic_guide"
+                ],
+                "filter": {
+                    "name": "galactic_guide",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'lunar_transfers'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=lunar_transfers",
+                    "--package=galactic_guide"
+                ],
+                "filter": {
+                    "name": "lunar_transfers",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'lunar_transfers'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=lunar_transfers",
+                    "--package=galactic_guide"
+                ],
+                "filter": {
+                    "name": "lunar_transfers",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
