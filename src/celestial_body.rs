@@ -107,16 +107,16 @@ impl SolarSystem {
         let mut bodies = HashMap::new();
 
         // Create all bodies (There must be a better way to do this???)
-        bodies.insert(CelestialBodyId::Sun, CelestialBody::new("Sun", CelestialBodyType::Star, 1.0, Vec3::new(0.0, 0.0, 0.0), None));
-        bodies.insert(CelestialBodyId::Mercury, CelestialBody::new("Mercury", CelestialBodyType::Planet, 0.5, Vec3::new(15.0, 0.0, 0.0), Some(CelestialBodyId::Sun)));
-        bodies.insert(CelestialBodyId::Venus, CelestialBody::new("Venus", CelestialBodyType::Planet, 1.0, Vec3::new(20.0, 0.0, 0.0), Some(CelestialBodyId::Sun)));
-        bodies.insert(CelestialBodyId::Earth, CelestialBody::new("Earth", CelestialBodyType::Planet, 1.0, Vec3::new(25.0, 0.0, 0.0), Some(CelestialBodyId::Sun)));
-        bodies.insert(CelestialBodyId::Moon, CelestialBody::new("Moon", CelestialBodyType::Moon, 0.25, Vec3::new(25.0, 0.0, 1.0), Some(CelestialBodyId::Earth)));
-        bodies.insert(CelestialBodyId::Mars, CelestialBody::new("Mars", CelestialBodyType::Planet, 0.5, Vec3::new(30.0, 0.0, 0.0), Some(CelestialBodyId::Sun)));
-        bodies.insert(CelestialBodyId::Jupiter, CelestialBody::new("Jupiter", CelestialBodyType::Planet, 2.0, Vec3::new(35.0, 0.0, 0.0), Some(CelestialBodyId::Sun)));
-        bodies.insert(CelestialBodyId::Saturn, CelestialBody::new("Saturn", CelestialBodyType::Planet, 1.5, Vec3::new(40.0, 0.0, 0.0), Some(CelestialBodyId::Sun)));
-        bodies.insert(CelestialBodyId::Uranus, CelestialBody::new("Uranus", CelestialBodyType::Planet, 1.0, Vec3::new(45.0, 0.0, 0.0), Some(CelestialBodyId::Sun)));
-        bodies.insert(CelestialBodyId::Neptune, CelestialBody::new("Neptune", CelestialBodyType::Planet, 1.0, Vec3::new(50.0, 0.0, 0.0), Some(CelestialBodyId::Sun)));
+        bodies.insert(CelestialBodyId::Sun, CelestialBody::new("Sun", CelestialBodyType::Star, 546.0, Vec3::new(0.0, 0.0, 0.0), None));
+        bodies.insert(CelestialBodyId::Mercury, CelestialBody::new("Mercury", CelestialBodyType::Planet, 3.0, Vec3::new(15.0, 0.0, 0.0), Some(CelestialBodyId::Sun)));
+        bodies.insert(CelestialBodyId::Venus, CelestialBody::new("Venus", CelestialBodyType::Planet, 5.0, Vec3::new(20.0, 0.0, 0.0), Some(CelestialBodyId::Sun)));
+        bodies.insert(CelestialBodyId::Earth, CelestialBody::new("Earth", CelestialBodyType::Planet, 5.0, Vec3::new(25.0, 0.0, 0.0), Some(CelestialBodyId::Sun)));
+        bodies.insert(CelestialBodyId::Moon, CelestialBody::new("Moon", CelestialBodyType::Moon, 1.0, Vec3::new(25.0, 0.0, 1.0), Some(CelestialBodyId::Earth)));
+        bodies.insert(CelestialBodyId::Mars, CelestialBody::new("Mars", CelestialBodyType::Planet, 5.0, Vec3::new(30.0, 0.0, 0.0), Some(CelestialBodyId::Sun)));
+        bodies.insert(CelestialBodyId::Jupiter, CelestialBody::new("Jupiter", CelestialBodyType::Planet, 8.0, Vec3::new(35.0, 0.0, 0.0), Some(CelestialBodyId::Sun)));
+        bodies.insert(CelestialBodyId::Saturn, CelestialBody::new("Saturn", CelestialBodyType::Planet, 7.5, Vec3::new(40.0, 0.0, 0.0), Some(CelestialBodyId::Sun)));
+        bodies.insert(CelestialBodyId::Uranus, CelestialBody::new("Uranus", CelestialBodyType::Planet, 6.0, Vec3::new(45.0, 0.0, 0.0), Some(CelestialBodyId::Sun)));
+        bodies.insert(CelestialBodyId::Neptune, CelestialBody::new("Neptune", CelestialBodyType::Planet, 6.0, Vec3::new(50.0, 0.0, 0.0), Some(CelestialBodyId::Sun)));
 
         SolarSystem { bodies }
     }
@@ -174,7 +174,7 @@ impl SolarSystem {
     pub fn set_positions(bodies: &Vec<&CelestialBody>) -> Vec<Vec3> {
         let mut body_positions = Vec::new();
         for (i, body) in bodies.iter().enumerate() {
-            body_positions.push(Vec3::new(i as f32 * 5.0, 0.0, 0.0))
+            body_positions.push(Vec3::new(i as f32 * 117407.0, 0.0, 0.0))
         }
         body_positions
     }

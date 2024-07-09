@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 mod celestial_body;
 use celestial_body::{CelestialBody, CelestialBodyType, CelestialBodyId, SolarSystem};
 
@@ -7,6 +9,7 @@ use bevy::{
         render_asset::RenderAssetUsages,
         render_resource::{Extent3d, TextureDimension, TextureFormat},
     },
+    pbr::CascadeShadowConfigBuilder,
 };
 
 use bevy_egui::{egui::{self, pos2}, EguiContexts, EguiPlugin};
@@ -17,6 +20,8 @@ use smooth_bevy_cameras::{
 };
 
 use strum::IntoEnumIterator;
+
+use bevy_polyline::prelude::*;
 
 
 
@@ -33,6 +38,8 @@ fn main() {
         .add_plugins(EguiPlugin)
         .add_plugins(LookTransformPlugin)
         .add_plugins(OrbitCameraPlugin::default())
+        .add_plugins(PolylinePlugin)
+        .insert_resource(ClearColor(Color::BLACK))
         .add_systems(Startup, setup)
         .add_systems(Update, orbit_editor_ui)
         .run();
@@ -44,6 +51,8 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut images: ResMut<Assets<Image>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut polyline_materials: ResMut<Assets<PolylineMaterial>>,
+    mut polylines: ResMut<Assets<Polyline>>,
     asset_server: Res<AssetServer>,
 ) {
     // Create a solar system, selecting default body
@@ -53,34 +62,67 @@ fn setup(
     // Spawn the bodies
     let drawn_bodies = solar_system.spawn_visible(&mut commands, &asset_server, &mut meshes, &mut materials, selected_body);
 
-    // Create a light
-    commands.spawn(PointLightBundle {
-        point_light: PointLight {
+    // Create an ambient light
+    // ambient light
+    commands.insert_resource(AmbientLight {
+        color: Color::ORANGE_RED,
+        brightness: 100.0,
+    });
+
+    // Create "sun" light
+    commands.spawn(DirectionalLightBundle {
+        directional_light: DirectionalLight {
+            illuminance: 10000.0, //light_consts::lux::FULL_DAYLIGHT,
             shadows_enabled: true,
-            intensity: 10_000_000.,
-            range: 100.0,
-            shadow_depth_bias: 0.2,
             ..default()
         },
-        transform: Transform::from_xyz(8.0, 16.0, 8.0),
+        transform: Transform {
+            translation: Vec3::new(0.0, 2.0, 0.0),
+            rotation: Quat::from_rotation_x(-PI / 4.),
+            ..default()
+        },
+        cascade_shadow_config: CascadeShadowConfigBuilder {
+            first_cascade_far_bound: 4.0,
+            maximum_distance: 10.0,
+            ..default()
+        }
+        .into(),
         ..default()
     });
 
-    // Create a ground plane
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Plane3d::default().mesh().size(10.0, 10.0)),
-        material: materials.add(Color::rgb(0.5, 0.5, 0.5)),
-        ..default()
-    });
 
+    // Create a camera
     commands
         .spawn(Camera3dBundle::default())
         .insert(OrbitCameraBundle::new(
             OrbitCameraController::default(),
             Vec3::new(0.0, 7., 14.0),
-            Vec3::new(0., 1., 0.),
+            Vec3::new(0., 0., 0.),
             Vec3::Y,
         ));
+
+    // Create a test orbit polyline of an orbit with radius 15.0
+    let orbit_radius = 10.0;
+    let vertices = (0..=360)
+        .step_by(5)
+        .map(|i| {
+            let angle = i as f32 * PI / 180.0;
+            Vec3::new(angle.cos() * orbit_radius, 0.0, angle.sin() * orbit_radius)
+        })
+        .collect::<Vec<_>>();
+
+    commands.spawn(PolylineBundle {
+        polyline: polylines.add(Polyline {
+            vertices: vertices.clone(),
+        }),
+        material: polyline_materials.add(PolylineMaterial {
+            width: 3.0,
+            color: Color::PURPLE,
+            perspective: false,
+            ..default()
+        }),
+        ..default()
+    });
 
     // Add app_state to resource map
     commands.insert_resource(AppState { solar_system, selected_body, drawn_bodies });
