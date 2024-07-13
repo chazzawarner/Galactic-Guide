@@ -1,6 +1,7 @@
 use std::f32::consts::PI;
 
 mod celestial_body;
+mod celestial_data;
 use celestial_body::{CelestialBody, CelestialBodyType, CelestialBodyId, SolarSystem};
 
 use bevy::{
@@ -102,7 +103,7 @@ fn setup(
         ));
 
     // Create a test orbit polyline of an orbit with radius 15.0
-    let orbit_radius = 10.0;
+    let orbit_radius = 39.0;
     let vertices = (0..=360)
         .step_by(5)
         .map(|i| {

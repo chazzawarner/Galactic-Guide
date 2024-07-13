@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use strum_macros::EnumIter;
 
+use crate::celestial_data::{get_radius, get_position, default_ephemeris};
+
 use bevy::{
     prelude::*,
     render::{
@@ -41,18 +43,16 @@ pub enum CelestialBodyId {
 pub struct CelestialBody {
     name: String,
     body_type: CelestialBodyType,
-    pub radius: f32,
-    pub position: Vec3, // Potentially uneccessary to have position here and instead store it in the render component
+    pub radius: f32, // Potentially uneccessary to have position here and instead store it in the render component
     parent_id: Option<CelestialBodyId>,
 }
 
 impl CelestialBody {
-    pub fn new(name: &str, body_type: CelestialBodyType, radius: f32, position: Vec3, parent_id: Option<CelestialBodyId>) -> CelestialBody {
+    pub fn new(name: &str, body_type: CelestialBodyType, radius: f32, parent_id: Option<CelestialBodyId>) -> CelestialBody {
         CelestialBody {
             name: name.to_string(),
             body_type,
             radius,
-            position,
             parent_id,
         }
     }
@@ -95,6 +95,23 @@ impl CelestialBody {
         // Return the Entity ID
         entity_commands.id()
     }
+
+    // Return the CelestialBodyId of the body
+    pub fn get_id(&self) -> CelestialBodyId {
+        match self.name.as_str() {
+            "Sun" => CelestialBodyId::Sun,
+            "Mercury" => CelestialBodyId::Mercury,
+            "Venus" => CelestialBodyId::Venus,
+            "Earth" => CelestialBodyId::Earth,
+            "Moon" => CelestialBodyId::Moon,
+            "Mars" => CelestialBodyId::Mars,
+            "Jupiter" => CelestialBodyId::Jupiter,
+            "Saturn" => CelestialBodyId::Saturn,
+            "Uranus" => CelestialBodyId::Uranus,
+            "Neptune" => CelestialBodyId::Neptune,
+            _ => CelestialBodyId::Sun,
+        }
+    }
 }
 
 #[derive(Default)]
@@ -107,16 +124,16 @@ impl SolarSystem {
         let mut bodies = HashMap::new();
 
         // Create all bodies (There must be a better way to do this???)
-        bodies.insert(CelestialBodyId::Sun, CelestialBody::new("Sun", CelestialBodyType::Star, 546.0, Vec3::new(0.0, 0.0, 0.0), None));
-        bodies.insert(CelestialBodyId::Mercury, CelestialBody::new("Mercury", CelestialBodyType::Planet, 3.0, Vec3::new(15.0, 0.0, 0.0), Some(CelestialBodyId::Sun)));
-        bodies.insert(CelestialBodyId::Venus, CelestialBody::new("Venus", CelestialBodyType::Planet, 5.0, Vec3::new(20.0, 0.0, 0.0), Some(CelestialBodyId::Sun)));
-        bodies.insert(CelestialBodyId::Earth, CelestialBody::new("Earth", CelestialBodyType::Planet, 5.0, Vec3::new(25.0, 0.0, 0.0), Some(CelestialBodyId::Sun)));
-        bodies.insert(CelestialBodyId::Moon, CelestialBody::new("Moon", CelestialBodyType::Moon, 1.0, Vec3::new(25.0, 0.0, 1.0), Some(CelestialBodyId::Earth)));
-        bodies.insert(CelestialBodyId::Mars, CelestialBody::new("Mars", CelestialBodyType::Planet, 5.0, Vec3::new(30.0, 0.0, 0.0), Some(CelestialBodyId::Sun)));
-        bodies.insert(CelestialBodyId::Jupiter, CelestialBody::new("Jupiter", CelestialBodyType::Planet, 8.0, Vec3::new(35.0, 0.0, 0.0), Some(CelestialBodyId::Sun)));
-        bodies.insert(CelestialBodyId::Saturn, CelestialBody::new("Saturn", CelestialBodyType::Planet, 7.5, Vec3::new(40.0, 0.0, 0.0), Some(CelestialBodyId::Sun)));
-        bodies.insert(CelestialBodyId::Uranus, CelestialBody::new("Uranus", CelestialBodyType::Planet, 6.0, Vec3::new(45.0, 0.0, 0.0), Some(CelestialBodyId::Sun)));
-        bodies.insert(CelestialBodyId::Neptune, CelestialBody::new("Neptune", CelestialBodyType::Planet, 6.0, Vec3::new(50.0, 0.0, 0.0), Some(CelestialBodyId::Sun)));
+        bodies.insert(CelestialBodyId::Sun, CelestialBody::new("Sun", CelestialBodyType::Star, get_radius(CelestialBodyId::Sun), None));
+        bodies.insert(CelestialBodyId::Mercury, CelestialBody::new("Mercury", CelestialBodyType::Planet, get_radius(CelestialBodyId::Mercury), Some(CelestialBodyId::Sun)));
+        bodies.insert(CelestialBodyId::Venus, CelestialBody::new("Venus", CelestialBodyType::Planet, get_radius(CelestialBodyId::Venus), Some(CelestialBodyId::Sun)));
+        bodies.insert(CelestialBodyId::Earth, CelestialBody::new("Earth", CelestialBodyType::Planet, get_radius(CelestialBodyId::Earth), Some(CelestialBodyId::Sun)));
+        bodies.insert(CelestialBodyId::Moon, CelestialBody::new("Moon", CelestialBodyType::Moon, get_radius(CelestialBodyId::Moon), Some(CelestialBodyId::Earth)));
+        bodies.insert(CelestialBodyId::Mars, CelestialBody::new("Mars", CelestialBodyType::Planet, get_radius(CelestialBodyId::Mars), Some(CelestialBodyId::Sun)));
+        bodies.insert(CelestialBodyId::Jupiter, CelestialBody::new("Jupiter", CelestialBodyType::Planet, get_radius(CelestialBodyId::Jupiter), Some(CelestialBodyId::Sun)));
+        bodies.insert(CelestialBodyId::Saturn, CelestialBody::new("Saturn", CelestialBodyType::Planet, get_radius(CelestialBodyId::Saturn), Some(CelestialBodyId::Sun)));
+        bodies.insert(CelestialBodyId::Uranus, CelestialBody::new("Uranus", CelestialBodyType::Planet, get_radius(CelestialBodyId::Uranus), Some(CelestialBodyId::Sun)));
+        bodies.insert(CelestialBodyId::Neptune, CelestialBody::new("Neptune", CelestialBodyType::Planet, get_radius(CelestialBodyId::Neptune), Some(CelestialBodyId::Sun)));
 
         SolarSystem { bodies }
     }
@@ -171,11 +188,22 @@ impl SolarSystem {
 
     // Set the positions of the bodies based on the selected body
     // Eventually based on time and empemeris data?
-    pub fn set_positions(bodies: &Vec<&CelestialBody>) -> Vec<Vec3> {
+    pub fn set_positions(bodies: &[&CelestialBody]) -> Vec<Vec3> {
         let mut body_positions = Vec::new();
-        for (i, body) in bodies.iter().enumerate() {
-            body_positions.push(Vec3::new(i as f32 * 117407.0, 0.0, 0.0))
+
+        let target_body = bodies[0].get_id(); // Presume the first body is the target body as hardcoded?
+
+        //body_positions.push(Vec3::new(0.0, 0.0, 0.0));
+
+        let cosm = default_ephemeris();
+
+        for body in bodies.iter() {
+            let position = get_position(body.get_id(), target_body, &cosm);
+            body_positions.push(position);
+
+            println!("Position of {:?}: {:?}", body.name, position)
         }
+
         body_positions
     }
 
