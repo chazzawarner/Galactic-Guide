@@ -1,6 +1,6 @@
 /// Sets radii of bodies and pull ephemeral data for their positions
 
-use crate::celestial_body::CelestialBodyId;
+use crate::celestial_body::{CelestialBodyId, SolarSystem, CelestialBodyType};
 
 use nyx_space::{
     cosmic::*,
@@ -124,12 +124,14 @@ pub fn equatorial_to_ecliptic(pos: Vec3, central_body: CelestialBodyId) -> Vec3 
 
 // Get the trajectory of a celestial body relative to a central body over a time period with a given number of steps
 // Will require refactoring to handle CelstialBody/SolarSystem struct
-pub fn get_traj(target_body: CelestialBodyId, central_body: CelestialBodyId, start_time: Epoch, end_time: Epoch, steps: usize, cosm: &Arc<Cosm>) -> Vec<Vec3> {
-    // Return no orbit trajectory if the target body is the sun
+pub fn get_traj(target_body: CelestialBodyId, central_body: CelestialBodyId, start_time: Epoch, end_time: Epoch, steps: usize, solar_system: &SolarSystem, cosm: &Arc<Cosm>) -> Vec<Vec3> {
+    let target_body_type = &solar_system.bodies.get(&target_body).unwrap().body_type;
+
     if target_body == CelestialBodyId::Sun {
+        // Return no orbit trajectory if the target body is the sun
         return Vec::new();
-    } else {
-        // If not, find trajectory in the sun frame, transforming the coordinates to the central body frame at start_time
+    } else if target_body_type == &CelestialBodyType::Planet {
+        // If not and it is a planet, find trajectory in the sun frame, transforming the coordinates to the central body frame at start_time
         let central_frame = get_frame(central_body, cosm);
         let sun_frame = get_frame(CelestialBodyId::Sun, cosm);
 
@@ -151,6 +153,27 @@ pub fn get_traj(target_body: CelestialBodyId, central_body: CelestialBodyId, sta
 
             // Add the position to the trajectory
             trajectory.push(target_position_central);
+        }
+
+        trajectory.push(Vec3::ZERO); // Add the final position to the trajectory
+
+        trajectory
+    } else {
+        // Else, must be a moon/asteroid. So, find the trajectory in the central body frame
+        let central_frame = get_frame(central_body, cosm);
+
+        let mut trajectory = Vec::new();
+        let time_step = (end_time - start_time) / steps as f64;
+
+        // Iterate through each step, finding the position of the target body in the central body frame
+        for i in 0..steps {
+            let time = start_time + time_step * i as f64;
+
+            // Find the position of the target body in the central body frame
+            let target_position = get_position(target_body, central_body, &time, cosm);
+
+            // Add the position to the trajectory
+            trajectory.push(target_position);
         }
 
         trajectory

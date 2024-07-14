@@ -13,7 +13,7 @@ use nyx_space::{
     md::ui::Arc,
 };
 
-const TRAJ_TOTAL_TIME: f64 = 86400.0 * 365.0; // 1 year
+const TRAJ_TOTAL_TIME: f64 = 86400.0 * 365.5; // 1 year
 const TRAJ_POINTS: usize = 1000;
 const TRAJ_COLOURS: [Color; 10] = [
     Color::RED,
@@ -44,7 +44,7 @@ pub fn render_trajs(
 
     // Plot the trajectory for each body
     for (index, body) in bodies.iter().enumerate() {
-        let traj = get_traj(body.get_id(), selected_body, epoch, end_epoch, TRAJ_POINTS, &cosm);
+        let traj = get_traj(body.get_id(), selected_body, epoch, end_epoch, TRAJ_POINTS, solar_system, &cosm);
 
         let mut points = Vec::new();
         for point in traj.iter() {

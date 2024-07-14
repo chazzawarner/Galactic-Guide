@@ -47,9 +47,9 @@ pub enum CelestialBodyId {
 #[derive(Debug, Clone)]
 pub struct CelestialBody {
     name: String,
-    body_type: CelestialBodyType,
-    pub radius: f32, // Potentially uneccessary to have position here and instead store it in the render component
-    parent_id: Option<CelestialBodyId>,
+    pub body_type: CelestialBodyType,
+    pub radius: f32, // Potentially uneccessary to have position here and should instead store it in the render component
+    pub parent_id: Option<CelestialBodyId>,
 }
 
 impl CelestialBody {
@@ -121,7 +121,7 @@ impl CelestialBody {
 
 #[derive(Default)]
 pub struct SolarSystem {
-    bodies: HashMap<CelestialBodyId, CelestialBody>,
+    pub bodies: HashMap<CelestialBodyId, CelestialBody>,
 }
 
 impl SolarSystem {
