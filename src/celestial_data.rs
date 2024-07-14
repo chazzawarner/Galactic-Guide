@@ -31,6 +31,25 @@ pub fn get_radius(body: CelestialBodyId) -> f32 {
     radius * SOLAR_SYSTEM_SCALE // Scale the radius to the game's scale
 }
 
+// Get the sideral orbital period of a celestial body (in seconds)
+pub fn get_orbital_period(body: CelestialBodyId) -> f64 {
+    let seconds_per_day = 86400.0;
+
+    let period = match body {
+        CelestialBodyId::Sun => 0.0,
+        CelestialBodyId::Mercury => 87.969,
+        CelestialBodyId::Venus => 224.701,
+        CelestialBodyId::Earth => 365.256,
+        CelestialBodyId::Moon => 27.322,
+        CelestialBodyId::Mars => 686.980,
+        CelestialBodyId::Jupiter => 4332.589,
+        CelestialBodyId::Saturn => 10759.22,
+        CelestialBodyId::Uranus => 30685.4,
+        CelestialBodyId::Neptune => 60189.0,
+    };
+
+    period * seconds_per_day
+}
 
 
 
@@ -155,7 +174,7 @@ pub fn get_traj(target_body: CelestialBodyId, central_body: CelestialBodyId, sta
             trajectory.push(target_position_central);
         }
 
-        trajectory.push(Vec3::ZERO); // Add the final position to the trajectory
+        trajectory.push(Vec3::ZERO); // Add the final position to the trajectory, maybe should be in orbit_renderer?
 
         trajectory
     } else {

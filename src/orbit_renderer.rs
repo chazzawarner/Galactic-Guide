@@ -1,6 +1,6 @@
 /// Using the polyline plugin to render the orbits of celestial bodies and spacecraft
 
-use crate::celestial_data::{get_traj, SOLAR_SYSTEM_SCALE, equatorial_to_ecliptic};
+use crate::celestial_data::{get_traj, equatorial_to_ecliptic, get_orbital_period};
 use crate::celestial_body::{CelestialBodyId, SolarSystem};
 
 use bevy_polyline::prelude::*;
@@ -13,7 +13,6 @@ use nyx_space::{
     md::ui::Arc,
 };
 
-const TRAJ_TOTAL_TIME: f64 = 86400.0 * 365.5; // 1 year
 const TRAJ_POINTS: usize = 1000;
 const TRAJ_COLOURS: [Color; 10] = [
     Color::RED,
@@ -40,10 +39,10 @@ pub fn render_trajs(
 ) {
     // Get the list of selected bodies
     let bodies = solar_system.get_visible_bodies(selected_body);
-    let end_epoch = epoch + TRAJ_TOTAL_TIME;
 
     // Plot the trajectory for each body
     for (index, body) in bodies.iter().enumerate() {
+        let end_epoch = epoch + get_orbital_period(body.get_id());
         let traj = get_traj(body.get_id(), selected_body, epoch, end_epoch, TRAJ_POINTS, solar_system, &cosm);
 
         let mut points = Vec::new();
