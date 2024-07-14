@@ -2,6 +2,8 @@ use std::f32::consts::PI;
 
 mod celestial_body;
 mod celestial_data;
+mod orbit_renderer;
+use orbit_renderer::render_trajs;
 use celestial_body::{CelestialBody, CelestialBodyType, CelestialBodyId, SolarSystem};
 
 use bevy::{
@@ -24,13 +26,20 @@ use strum::IntoEnumIterator;
 
 use bevy_polyline::prelude::*;
 
+use nyx_space::{
+    cosmic::Cosm,
+    time::Epoch,
+    md::ui::Arc,
+};
 
 
-#[derive(Resource, Default)]
+
+#[derive(Resource)]
 struct AppState {
     solar_system: SolarSystem,
     selected_body: CelestialBodyId,
     drawn_bodies: Vec<Entity>,
+    current_time: Epoch,
 }
 
 fn main() {
@@ -56,12 +65,16 @@ fn setup(
     mut polylines: ResMut<Assets<Polyline>>,
     asset_server: Res<AssetServer>,
 ) {
+
     // Create a solar system, selecting default body
     let mut solar_system = SolarSystem::new();
     let selected_body = CelestialBodyId::default();
 
+    // Set current time
+    let mut current_time = Epoch::from_gregorian_utc(2024, 7, 4, 12, 0, 0, 0);
+
     // Spawn the bodies
-    let drawn_bodies = solar_system.spawn_visible(&mut commands, &asset_server, &mut meshes, &mut materials, selected_body);
+    let drawn_bodies = solar_system.spawn_visible(&mut commands, &asset_server, &mut meshes, &mut materials, selected_body, &current_time);
 
     // Create an ambient light
     // ambient light
@@ -102,7 +115,7 @@ fn setup(
             Vec3::Y,
         ));
 
-    // Create a test orbit polyline of an orbit with radius 15.0
+    /*// Create a test orbit polyline of an orbit with radius 15.0
     let orbit_radius = 39.0;
     let vertices = (0..=360)
         .step_by(5)
@@ -123,10 +136,17 @@ fn setup(
             ..default()
         }),
         ..default()
-    });
+    });*/
+
+    // Create a Cosm instance for use across the application
+    let cosm = Cosm::de438();
+
+    // Render the orbits of the visible bodies
+    render_trajs(&mut commands, &mut polyline_materials, &mut polylines, &solar_system, selected_body, cosm, current_time);
+
 
     // Add app_state to resource map
-    commands.insert_resource(AppState { solar_system, selected_body, drawn_bodies });
+    commands.insert_resource(AppState { solar_system, selected_body, drawn_bodies, current_time });
 }
 
 // Replace bodies upon update
@@ -136,9 +156,11 @@ fn replace_bodies(mut app_state: ResMut<AppState>, mut commands: Commands, asset
         commands.entity(*entity).despawn();
     }
 
+    let current_time = app_state.current_time.clone();
+
     // Spawn the new bodies
     let selected_body = app_state.selected_body.clone();
-    let drawn_bodies = app_state.solar_system.spawn_visible(&mut commands, &asset_server, &mut meshes, &mut materials, selected_body);
+    let drawn_bodies = app_state.solar_system.spawn_visible(&mut commands, &asset_server, &mut meshes, &mut materials, selected_body, &current_time);
     app_state.drawn_bodies = drawn_bodies;
 }
 

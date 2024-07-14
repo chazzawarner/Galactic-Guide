@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use strum_macros::EnumIter;
 
-use crate::celestial_data::{get_radius, get_position, default_ephemeris};
+use crate::celestial_data::{get_radius, get_position, default_ephemeris, equatorial_to_ecliptic};
 
 use bevy::{
     prelude::*,
@@ -10,6 +10,11 @@ use bevy::{
         render_asset::RenderAssetUsages,
         render_resource::{Extent3d, TextureDimension, TextureFormat},
     },
+};
+
+use nyx_space::{
+    cosmic::*,
+    time::*,
 };
 
 
@@ -188,7 +193,7 @@ impl SolarSystem {
 
     // Set the positions of the bodies based on the selected body
     // Eventually based on time and empemeris data?
-    pub fn set_positions(bodies: &[&CelestialBody]) -> Vec<Vec3> {
+    pub fn set_positions(bodies: &[&CelestialBody], epoch: &Epoch) -> Vec<Vec3> {
         let mut body_positions = Vec::new();
 
         let target_body = bodies[0].get_id(); // Presume the first body is the target body as hardcoded?
@@ -196,9 +201,11 @@ impl SolarSystem {
         //body_positions.push(Vec3::new(0.0, 0.0, 0.0));
 
         let cosm = default_ephemeris();
+        //let epoch = Epoch::from_gregorian_utc(2024, 7, 4, 12, 0, 0, 0);
 
         for body in bodies.iter() {
-            let position = get_position(body.get_id(), target_body, &cosm);
+            let mut position = get_position(body.get_id(), target_body, epoch, &cosm);
+            position = equatorial_to_ecliptic(position, target_body);
             body_positions.push(position);
 
             println!("Position of {:?}: {:?}", body.name, position)
@@ -215,13 +222,14 @@ impl SolarSystem {
         asset_server: &Res<AssetServer>, 
         meshes: &mut ResMut<Assets<Mesh>>, 
         materials: &mut ResMut<Assets<StandardMaterial>>,
-        selected_body: CelestialBodyId
+        selected_body: CelestialBodyId,
+        epoch: &Epoch,
     ) -> Vec<Entity> {
         // Get the visible bodies
         let visible_bodies = self.get_visible_bodies(selected_body);
 
         // Set the positions of the bodies
-        let body_positions = SolarSystem::set_positions(&visible_bodies);
+        let body_positions = SolarSystem::set_positions(&visible_bodies, epoch);
 
         // Create Entity vec
         let mut drawn_bodies = Vec::new();

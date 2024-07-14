@@ -41,18 +41,18 @@ pub fn default_ephemeris() -> Arc<Cosm> {
 }
 
 // Get position of a celestial body relative to a central frame
-pub fn get_position(target_body: CelestialBodyId, central_body: CelestialBodyId, cosm: &Arc<Cosm>) -> Vec3 {
-    let epoch = Epoch::from_gregorian_utc(2024, 7, 4, 12, 0, 0, 0);
+pub fn get_position(target_body: CelestialBodyId, central_body: CelestialBodyId, time: &Epoch, cosm: &Arc<Cosm>) -> Vec3 {
+    //let epoch = Epoch::from_gregorian_utc(2024, 7, 4, 12, 0, 0, 0);
     let target = get_ephem_path(target_body);
     let frame = get_frame(central_body, cosm);
     let correction = LightTimeCalc::Abberation;
 
-    let frame_list = cosm.frames_get_names();
-    println!("Ephem path for target: {:?}", target);
-    println!("Frame: {:?}", frame);
+    //let frame_list = cosm.frames_get_names();
+    //println!("Ephem path for target: {:?}", target);
+    //println!("Frame: {:?}", frame);
 
     let cosm_ref = cosm.as_ref();
-    let orbit = cosm_ref.celestial_state(target, epoch, frame, correction);
+    let orbit = cosm_ref.celestial_state(target, *time, frame, correction);
 
     // Return the position of the target body
     //Vec3::new(orbit.x as f32, orbit.y as f32, orbit.z as f32) * SOLAR_SYSTEM_SCALE  
@@ -60,7 +60,8 @@ pub fn get_position(target_body: CelestialBodyId, central_body: CelestialBodyId,
 
     // Transform from J2000 to EME2000
     let pos = Vec3::new(orbit.x as f32, orbit.z as f32, orbit.y as f32) * SOLAR_SYSTEM_SCALE;
-    equatorial_to_ecliptic(pos)
+    //equatorial_to_ecliptic(pos, central_body) Need to put this somewhere else
+    pos
 }
 
 // Get the path of the ephemeris data for a celestial body
@@ -87,17 +88,80 @@ pub fn get_frame(body: CelestialBodyId, cosm: &Arc<Cosm>) -> Frame {
     cosm.frame_from_ephem_path(ephem_path)
 }
 
+// Axial tilt of celestial bodies
+pub fn get_axial_tilt(body: CelestialBodyId) -> f32 {
+    match body {
+        CelestialBodyId::Sun => 7.25,
+        CelestialBodyId::Mercury => 0.03,
+        CelestialBodyId::Venus => 2.64,
+        CelestialBodyId::Earth => 23.4,
+        CelestialBodyId::Moon => 6.7,
+        CelestialBodyId::Mars => 25.2,
+        CelestialBodyId::Jupiter => 3.1,
+        CelestialBodyId::Saturn => 26.7,
+        CelestialBodyId::Uranus => 82.2,
+        CelestialBodyId::Neptune => 28.3,
+    }
+}
+
+
 // Transform from J200 equator to ecliptic
-pub fn equatorial_to_ecliptic(pos: Vec3) -> Vec3 {
+pub fn equatorial_to_ecliptic(pos: Vec3, central_body: CelestialBodyId) -> Vec3 {
     let x = pos.x;
     let y = pos.y;
     let z = pos.z;
 
-    let obliquity = 23.439281 * std::f32::consts::PI / 180.0; // Need to define axial tilt for all bodies!!
+    let axial_tilt = get_axial_tilt(central_body) * std::f32::consts::PI / 180.0;
+    //let obliquity = 23.439281 * std::f32::consts::PI / 180.0; // Need to define axial tilt for all bodies!!
 
     let x_prime = x;
-    let y_prime = y * obliquity.cos() - z * obliquity.sin();
-    let z_prime = y * obliquity.sin() + z * obliquity.cos();
+    let y_prime = y * axial_tilt.cos() - z * axial_tilt.sin();
+    let z_prime = y * axial_tilt.sin() + z * axial_tilt.cos();
 
     Vec3::new(x_prime as f32, y_prime as f32, z_prime as f32)
+}
+
+
+// Get the trajectory of a celestial body relative to a central body over a time period with a given number of steps
+// Will require refactoring to handle CelstialBody/SolarSystem struct
+pub fn get_traj(target_body: CelestialBodyId, central_body: CelestialBodyId, start_time: Epoch, end_time: Epoch, steps: usize, cosm: &Arc<Cosm>) -> Vec<Vec3> {
+    // Return no orbit trajectory if the target body is the sun
+    if target_body == CelestialBodyId::Sun {
+        return Vec::new();
+    } else {
+        // If not, find trajectory in the sun frame, transforming the coordinates to the central body frame at start_time
+        let central_frame = get_frame(central_body, cosm);
+        let sun_frame = get_frame(CelestialBodyId::Sun, cosm);
+
+        // Find the position of the central body at the start time in the sun frame
+        let central_position = get_position(central_body, CelestialBodyId::Sun, &start_time, cosm);
+
+        let mut trajectory = Vec::new();
+        let time_step = (end_time - start_time) / steps as f64;
+
+        // Iterate through each step, finding the position of the target body in the sun frame and transforming to the central body frame
+        for i in 0..steps {
+            let time = start_time + time_step * i as f64;
+
+            // Find the position of the target body in the sun frame
+            let target_position = get_position(target_body, CelestialBodyId::Sun, &time, cosm);
+
+            // Transform the position to the central body frame
+            let target_position_central = target_position - central_position;
+
+            // Add the position to the trajectory
+            trajectory.push(target_position_central);
+        }
+
+        trajectory
+    }
+}
+
+// Multiply a Vec3 by a nalgebra 3x3 matrix (Bevy uses f32, so we need to convert to f64 and back again)
+fn multiply_vec3_by_matrix(vec: bevy::prelude::Vec3, mat: nyx_space::linalg::Matrix<f64, nyx_space::linalg::Const<3>, nyx_space::linalg::Const<3>, nyx_space::linalg::ArrayStorage<f64, 3, 3>>) -> bevy::prelude::Vec3 {
+    let x = vec.x as f64 * mat[(0, 0)] + vec.y as f64 * mat[(0, 1)] + vec.z as f64 * mat[(0, 2)];
+    let y = vec.x as f64 * mat[(1, 0)] + vec.y as f64 * mat[(1, 1)] + vec.z as f64 * mat[(1, 2)];
+    let z = vec.x as f64 * mat[(2, 0)] + vec.y as f64 * mat[(2, 1)] + vec.z as f64 * mat[(2, 2)];
+
+    bevy::prelude::Vec3::new(x as f32, y as f32, z as f32)
 }
