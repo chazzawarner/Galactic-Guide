@@ -1,2 +1,2 @@
 # Galactic-Guide
-Mission planning tool for space missions
+(PROGRESS ON HOLD) Mission planning tool for space missions using Rust.
