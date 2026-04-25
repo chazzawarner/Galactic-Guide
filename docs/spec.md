@@ -1,5 +1,7 @@
 # Galactic Guide — Product Spec (v1)
 
+Companion documents: [`architecture.md`](./architecture.md) (how it's built) and [`api.md`](./api.md) (HTTP contract).
+
 ## Overview
 
 Galactic Guide is a 3D satellite dashboard that shows where a small set of well-known Earth-orbiting satellites are right now, with controls to fast-forward through time. The v1 experience is intentionally narrow: a textured Earth, a handful of carefully chosen satellites, an info panel, and a play/pause/speed widget. It is the smallest thing that demonstrates the full data path — TLE ingest, orbit propagation, type-safe API, and a 3D web client — and is the foundation we'll build a richer satellite catalog on later.
@@ -66,14 +68,14 @@ The simulation time drives both marker positions and the Earth's rotation (so th
 - No authentication, user accounts, or saved state.
 - No multi-user features.
 - No mobile or tablet layout work — desktop only.
-- No multi-satellite simultaneous propagation (only the selected satellite gets an orbit polyline; markers for the other four are propagated but not visualized as orbits).
+- No simultaneous orbit polylines — only the selected satellite gets a polyline; the other four are propagated for their marker positions only.
 
 ## Acceptance criteria
 
 A v1 build is considered shippable when:
 
 1. **Position accuracy.** The ISS marker position at `t = now` is within 0.1° of angular separation from a reference SGP4 propagator (e.g. `sgp4` Python package or `satellite.js`) using the same TLE.
-2. **Orbital elements correctness.** All seven elements in the detail panel match the values produced by an independent TLE parser to 4 significant figures.
+2. **Orbital elements correctness.** All six classical elements (a, e, i, RAAN, ω, M) plus the derived period match an independent TLE parser to 4 significant figures.
 3. **Smoothness.** At 1000x speed, the globe maintains ≥ 50 fps on a mid-range laptop (M-series Mac or recent x86 with integrated graphics) for at least 60 seconds without dropped frames or visible marker stuttering.
 4. **Geographic correctness.** With simulation time set to a known value, the sub-satellite point of the ISS lines up with that point on the Earth texture (within ~1° of arc, allowing for texture prime-meridian convention).
 5. **Time control responsiveness.** Pressing pause stops marker motion within one frame. Changing speed takes effect within one frame. "Now" snaps within one frame.
@@ -102,7 +104,7 @@ A v1 build is considered shippable when:
 
 ## Open questions (resolve before PRD)
 
-- **Selection method.** Dropdown only, or also click-to-select on the globe?
+- **Selection method.** Should we **also** support click-to-select on the globe in v1, in addition to the dropdown?
 - **Globe interaction.** Free-orbit camera, or constrained to "Earth always upright"?
 - **Theme.** Dark-only for v1 (likely), or light/dark toggle?
 - **Default satellite.** ISS (recognizable) or randomized from the five (avoids the appearance that ISS is special)?

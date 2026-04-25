@@ -89,7 +89,7 @@ Galactic-Guide/
 | Styling | Tailwind v4.1 (CSS-first via `@theme`) | No `tailwind.config.js`. Use `@source "../../packages/ui/src/**/*.tsx"` to scan workspace UI |
 | Components | shadcn/ui in monorepo mode | `packages/ui` is the registry source; `apps/web/components.json` aliases `@galactic/ui` |
 | 3D | three.js + @react-three/fiber + @react-three/drei | Earth radius = 1.0 scene unit |
-| Data fetching | TanStack Query v5 | Cache key: `["trajectory", satId, windowStartFloorMin, durationS, stepS]` |
+| Data fetching | TanStack Query v5 | Cache key: `["trajectory", noradId, windowStartFloorMin, durationS, stepS, includeVelocity]` |
 | Tables | TanStack Table v8 | Scaffolded; not on v1 critical path |
 | API | FastAPI ~0.115 + Pydantic v2 | OpenAPI exported via script |
 | ORM | SQLAlchemy 2.0 (async) + asyncpg | Alembic owns migrations |
@@ -98,6 +98,14 @@ Galactic-Guide/
 | Worker | Rust stable + Nyx 1.1.2 + `redis` 0.27 (`tokio-comp`,`streams`) + `sqlx` 0.8 | SGP4 from TLE for v1 |
 | Database | Postgres 16 (Docker for dev) | satellites, tles, propagated_windows |
 | Broker | Redis 7 (Docker for dev) | streams, pubsub, hot result cache |
+
+### Network topology
+
+`apps/web/next.config.ts` rewrites `/api/*` → `http://localhost:8000/v1/*` so the
+browser only ever talks to a single origin (`localhost:3000`). CORS is therefore
+not configured on FastAPI; the API is intended to be reached via the rewrite
+proxy in dev and an equivalent reverse proxy in any future deployment. This is
+why [`api.md`](./api.md) explicitly excludes a CORS spec.
 
 ## Database (Postgres)
 
@@ -137,7 +145,7 @@ CREATE TABLE propagated_windows (
   step_s        INTEGER NOT NULL,
   frame         TEXT NOT NULL,                 -- 'eci_j2000'
   include_velocity BOOLEAN NOT NULL DEFAULT TRUE,
-  samples       JSONB NOT NULL,                -- [{t, r:[x,y,z], v:[vx,vy,vz]}, …]
+  samples       JSONB NOT NULL,                -- [{t, r_km:[x,y,z], v_km_s:[vx,vy,vz]}, …]
   computed_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX propagated_windows_lookup_idx ON propagated_windows (tle_id, start_at);
@@ -151,7 +159,7 @@ CREATE INDEX propagated_windows_lookup_idx ON propagated_windows (tle_id, start_
 
 ### Read path with cache layering
 
-1. Web → `GET /satellites/{id}/trajectory?from=…&duration=3600&step=10`.
+1. Web → `GET /v1/satellites/{norad_id}/trajectory?from=…&duration=3600&step=10`.
 2. FastAPI computes the window hash → checks Redis `cache:result:{hash}`. **Hit** → return immediately.
 3. **Miss** → checks Postgres `propagated_windows` by hash. **Hit** → warm Redis, return.
 4. **Miss** → look up the latest TLE for the satellite from `tles`, build a job message, `XADD stream:propagate`, await pubsub `result:{job_id}` with a 5 s timeout.
@@ -191,12 +199,13 @@ Message payload (JSON in stream field `payload`):
 
 Don't propagate per frame. The worker returns sampled windows; the browser interpolates.
 
-- **Window.** 1 hour, step 10 s → 360 samples × `{pos, vel}` ≈ 50 KB JSON per satellite.
+- **Window.** 1 hour, step 10 s → 361 samples (inclusive of both endpoints) × `{pos, vel}` ≈ 50 KB JSON per satellite.
 - **Prefetch.** When `simTime > windowStart + 0.75 * duration`, call `queryClient.prefetchQuery` for the next window. At 1000x speed, one hour of simulation runs in 3.6 s of wall time, so prefetch is critical.
 - **Interpolation** (`apps/web/lib/interpolate.ts`):
   - **Default**: cubic Hermite (C1) using returned velocities. Far better than position-only interpolation at LEO step sizes (10 s ≈ 75 km of motion).
   - **Fallback**: centripetal Catmull-Rom (positions only).
 - **Speed multiplier** changes only how `simTime` advances. Sample density and fetch logic do not change.
+- **Five-marker fan-out.** On first paint the dashboard issues 5 parallel trajectory requests (one per curated satellite) for marker positions; only the selected satellite's window is used to draw the orbit polyline. TanStack Query deduplicates if the same window is requested twice in a render. Per [`spec.md`](./spec.md), v1 deliberately avoids a batch positions endpoint — five cached requests are cheap.
 
 ## Type safety end-to-end
 
@@ -238,6 +247,7 @@ Other planet PNGs stay in `/assets` for later docs use.
 - **OpenAPI cold-start race.** Types must exist before `web#dev` typechecks. Commit an initial `generated.ts` stub; Turbo `dependsOn` handles steady state.
 - **Coordinate axis convention.** Nyx Z<sub>eci</sub> → three.js Y. Pick once, document once.
 - **Legacy Bevy code.** Keeping `crates/viewer` in the workspace means `cargo test --workspace` continues to compile it. If it ever becomes maintenance burden, drop it from default workspace members and require `--package viewer` to opt in.
+- **sqlx compile-time queries.** The worker uses `sqlx::query!` macros, which require either a live `DATABASE_URL` or the offline `sqlx-data.json` file at compile time. Commit `sqlx-data.json` and document the `cargo sqlx prepare` workflow in `apps/worker/README.md` so CI and fresh clones build without needing a running Postgres.
 
 ## Verification (fresh clone)
 
@@ -262,9 +272,9 @@ uv run alembic -c apps/api/alembic.ini upgrade head
 bun run dev                                  # web :3000, api :8000, worker
 
 # smoke
-curl http://localhost:8000/healthz
-curl http://localhost:8000/satellites
-curl 'http://localhost:8000/satellites/iss/trajectory?duration=3600&step=10' | jq '.samples | length'   # → 360
+curl http://localhost:8000/v1/healthz
+curl http://localhost:8000/v1/satellites
+curl 'http://localhost:8000/v1/satellites/25544/trajectory?duration=3600&step=10' | jq '.samples | length'   # → 361
 open http://localhost:3000
 
 # CI gates
