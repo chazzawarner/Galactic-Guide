@@ -312,8 +312,9 @@ models without touching this file.
 
 - Should `period_min` round to a fixed number of decimals (e.g. 2) or always
   return full precision? Decision: full precision, formatting is the client's job.
-- Do we expose `mean_motion_rev_per_day` alongside `period_min`? Decision deferred
-  to PRD; not in v1 unless asked.
+- Do we expose `mean_motion_rev_per_day` alongside `period_min`? Decision: not in
+  v1. `period_min` is the only motion field; clients can derive
+  `mean_motion = 1440 / period_min` if needed.
 - Is `t` in samples better as seconds offset (current decision) or absolute ISO
   timestamps? Decision: seconds offset for size and parsing speed; the client
   reconstructs absolute time from `start_at + t`.
