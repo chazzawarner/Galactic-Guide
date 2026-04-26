@@ -70,6 +70,22 @@ The simulation time drives both marker positions and the Earth's rotation (so th
 - No mobile or tablet layout work — desktop only.
 - No simultaneous orbit polylines — only the selected satellite gets a polyline; the other four are propagated for their marker positions only.
 
+## Accessibility
+
+Desktop-only in v1, so a11y commitments focus on keyboard operability, focus management, and contrast — not on full screen-reader narration of the 3D scene (canvas-based 3D is not natively accessible). The DOM controls around the canvas, however, must be fully usable without a pointer.
+
+- **Keyboard navigation.**
+  - Tab order: satellite dropdown → time controls (play/pause, 1x, 10x, 100x, 1000x, Now) → globe canvas (skipped from the tab order in v1; canvas keyboard interaction is M2).
+  - Space / Enter activates buttons. Arrow keys cycle the dropdown. Esc closes the dropdown.
+  - No keyboard traps.
+- **Focus.** Every interactive control has a visible focus ring (≥ 2 px outline, 3:1 contrast against its background). No `:focus { outline: none }` without a replacement.
+- **ARIA.** The dropdown uses the shadcn `<Select/>` (proxies native `<select>` ARIA semantics). Time-control buttons set `aria-pressed` on the active speed and carry `aria-label` for play/pause. The detail panel is a `<section aria-labelledby="…">` with the satellite name as its heading, so screen readers announce it on selection change.
+- **Contrast.** Text and UI meet WCAG 2.1 AA: 4.5:1 for body text, 3:1 for large text and UI elements. The v1 palette is dark-mode only; any future light mode must meet the same bar.
+- **Reduced motion.** When `prefers-reduced-motion: reduce` is set, the globe still rotates (it's the core feature), but UI transitions (dropdown open/close, panel slide-ins) are disabled and the simulation defaults to paused at 1x on first paint.
+- **Textual fallback.** Anything visible only on the globe (selected satellite, current simulation time, marker count) is mirrored in DOM elements with semantic markup so a screen reader can read the dashboard's state even though it can't read the canvas.
+
+Out of scope for v1: full screen-reader narration of orbital motion, voice control, customizable keybindings, canvas keyboard interaction.
+
 ## Acceptance criteria
 
 A v1 build is considered shippable when:
@@ -81,6 +97,7 @@ A v1 build is considered shippable when:
 5. **Time control responsiveness.** Pressing pause stops marker motion within one frame. Changing speed takes effect within one frame. "Now" snaps within one frame.
 6. **Cold-start time.** A fresh `git clone` to a working `localhost:3000` view (with all five satellites visible and selectable) completes in under 10 minutes on a developer machine with the prerequisites installed (Bun, uv, Rust, Docker).
 7. **Offline development.** The dashboard works without internet access using a committed fallback TLE snapshot (no live CelesTrak fetch required for local dev).
+8. **Keyboard accessibility & contrast.** All DOM controls are reachable in a logical tab order, operable via keyboard alone, and show a visible focus indicator. The detail panel is announced by NVDA / VoiceOver on selection change. Text and UI meet WCAG 2.1 AA. `prefers-reduced-motion: reduce` is honoured (no UI transitions; simulation defaults to paused at 1x).
 
 ## User flows (v1)
 

@@ -40,6 +40,7 @@ Companion documents: [`spec.md`](./spec.md) (what we're building),
 | API drift check | api + types | `scripts/check-api-contract.py` | <5 s | Yes — gate 4 |
 | Component / hook | web | vitest + @testing-library/react | <20 s | Yes — gate 2 |
 | Visual smoke | web | Playwright (Chromium, Linux container) | <120 s | Yes — gate 5 |
+| Accessibility audit | web | Playwright + `@axe-core/playwright`; `prefers-reduced-motion` vitest | <30 s | Yes — gate 5 |
 | Contract response validation | api | pytest + `jsonschema` | <30 s | **M2, not v1** |
 | Performance / load | api, worker | k6 / Criterion bench | minutes | **M2, not v1** |
 
@@ -243,6 +244,7 @@ Every spec.md acceptance criterion has a home:
 | 5 (controls within one frame) | `<TimeControls/>` vitest component test asserts state changes synchronously on click; React's synchronous re-render guarantee covers the "one frame" rendering claim, so no extra Playwright check is needed. |
 | 6 (cold-start <10 min) | Documented in `docs/architecture.md` § Verification; not automated in v1 |
 | 7 (offline development) | `apps/api/tests/integration/test_offline.py` runs the test suite with `OFFLINE=1` set |
+| 8 (a11y & contrast) | Playwright + `@axe-core/playwright` audit on the loaded dashboard (no critical / serious violations); vitest test that `<TimeControls/>` honours `prefers-reduced-motion: reduce`; manual NVDA / VoiceOver smoke pre-release |
 
 ## CI gates
 
