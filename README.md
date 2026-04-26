@@ -3,10 +3,9 @@
 A 3D satellite dashboard. Pick one of five well-known Earth-orbiting satellites,
 watch its orbit on a textured globe, and fast-forward through time.
 
-> **Status: documentation phase.** The repo currently holds v1 design docs in
-> `/docs/` and a dormant Bevy solar-system viewer in `src/` (kept buildable, not
-> shipped). Scaffolding for the Next.js dashboard, FastAPI service, and
-> Rust + Nyx worker lands once the PRD and roadmap are confirmed.
+> **Status: scaffolding phase.** All v1 design docs are confirmed. The monorepo
+> skeleton (Next.js dashboard, FastAPI service, Rust + Nyx worker, Docker Compose
+> stack) is being wired up in M1.
 
 ## What's in this repo today
 
@@ -19,7 +18,10 @@ watch its orbit on a textured globe, and fast-forward through time.
 | `docs/api.md`         | The v1 HTTP API contract.                                                   |
 | `docs/testing.md`     | Test types, oracles, and CI gate ordering.                                  |
 | `assets/textures/`    | Planet textures. `earth.png` is the primary v1 asset.                       |
-| `Cargo.toml`, `src/`  | Dormant Rust/Bevy viewer; will move under `crates/viewer/` when scaffolding lands. |
+| `apps/worker/`        | Rust + Nyx propagation worker skeleton (Redis Streams consumer).            |
+| `apps/api/`           | FastAPI service stub (full implementation in M2).                           |
+| `apps/web/`           | Next.js 15 dashboard stub (full implementation in M5).                      |
+| `packages/`           | Shared TypeScript configs, UI components, and generated API types.          |
 
 ## Documentation index
 
@@ -32,11 +34,7 @@ Read in order for full context, or jump straight to the one you need:
 5. **[API contract](./docs/api.md)** — endpoints, request/response shapes, error model.
 6. **[Testing strategy](./docs/testing.md)** — unit / integration / contract / visual / a11y layers, CI gates.
 
-## Planned local-dev workflow
-
-These commands are the v1 target — they don't all work yet because the monorepo
-isn't scaffolded. Captured here for reference and so the PRD/roadmap can plan
-against it.
+## Local-dev workflow
 
 ### One-time toolchain
 
@@ -90,7 +88,7 @@ This is opt-in. CI and the canonical contributor flow stay container-based.
 
 </details>
 
-### Common commands (planned)
+### Common commands
 
 Every gate runs inside a container so a laptop and CI execute the same
 environment:
@@ -125,9 +123,3 @@ When reading the docs, treat them as:
 - **planned** — to be written after the PRD + roadmap land.
 - **deferred** — explicitly out of v1 (called out in each doc's "not in v1" section).
 
-## Repository scope and history
-
-Galactic Guide started as a Rust + Bevy solar-system viewer. The scope has
-narrowed to a focused web-first satellite dashboard; the viewer crate is kept
-in the workspace so its Cargo build keeps passing during the migration but is
-not part of the v1 product surface.

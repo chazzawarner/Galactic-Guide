@@ -17,13 +17,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy workspace manifests first for dependency layer caching
 COPY Cargo.toml rust-toolchain.toml ./
 COPY apps/worker/Cargo.toml apps/worker/
-COPY crates/viewer/Cargo.toml crates/viewer/
 
-# Create dummy source files so cargo can fetch & cache dependencies
-RUN mkdir -p apps/worker/src crates/viewer/src/bin \
-    && echo 'fn main() {}' > apps/worker/src/main.rs \
-    && echo 'fn main() {}' > crates/viewer/src/main.rs \
-    && echo 'fn main() {}' > crates/viewer/src/bin/lunar_transfers.rs
+# Create dummy source file so cargo can fetch & cache dependencies
+RUN mkdir -p apps/worker/src \
+    && echo 'fn main() {}' > apps/worker/src/main.rs
 
 # Fetch dependencies (cached layer)
 RUN SQLX_OFFLINE=true cargo fetch
@@ -34,9 +31,8 @@ FROM base AS production-builder
 # Copy sqlx offline data before compiling
 COPY apps/worker/sqlx-data.json apps/worker/
 
-# Copy real sources
+# Copy real source
 COPY apps/worker/src apps/worker/src
-COPY crates/viewer/src crates/viewer/src
 
 RUN SQLX_OFFLINE=true cargo build --release --package worker
 
@@ -58,6 +54,5 @@ RUN cargo install cargo-watch
 
 COPY apps/worker/sqlx-data.json apps/worker/
 COPY apps/worker/src apps/worker/src
-COPY crates/viewer/src crates/viewer/src
 
 CMD ["cargo", "watch", "-x", "run --package worker"]
