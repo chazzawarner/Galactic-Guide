@@ -12,7 +12,9 @@ watch its orbit on a textured globe, and fast-forward through time.
 
 | Path                  | What it is                                                                  |
 |-----------------------|-----------------------------------------------------------------------------|
-| `docs/spec.md`        | What we're building (v1 product spec, acceptance criteria, accessibility). |
+| `docs/prd.md`         | Why we're building it (goals, non-goals, success metrics, open questions).  |
+| `docs/roadmap.md`     | Implementation milestones, gates, and post-v1 backlog.                      |
+| `docs/spec.md`        | What we're building (v1 product spec, acceptance criteria, accessibility).  |
 | `docs/architecture.md`| How it's built (polyglot monorepo, Postgres, Redis Streams, R3F).           |
 | `docs/api.md`         | The v1 HTTP API contract.                                                   |
 | `docs/testing.md`     | Test types, oracles, and CI gate ordering.                                  |
@@ -23,12 +25,12 @@ watch its orbit on a textured globe, and fast-forward through time.
 
 Read in order for full context, or jump straight to the one you need:
 
-1. **[Product spec](./docs/spec.md)** — features, target user, accessibility, acceptance criteria.
-2. **[Architecture](./docs/architecture.md)** — services, data path, database schema, monorepo layout.
-3. **[API contract](./docs/api.md)** — endpoints, request/response shapes, error model.
-4. **[Testing strategy](./docs/testing.md)** — unit / integration / contract / visual / a11y layers, CI gates.
-
-PRD and roadmap are next; they'll land in `docs/prd.md` and `docs/roadmap.md`.
+1. **[PRD](./docs/prd.md)** — goals, non-goals, success metrics, open questions.
+2. **[Roadmap](./docs/roadmap.md)** — implementation milestones, gates, post-v1 backlog.
+3. **[Product spec](./docs/spec.md)** — features, target user, accessibility, acceptance criteria.
+4. **[Architecture](./docs/architecture.md)** — services, data path, database schema, monorepo layout.
+5. **[API contract](./docs/api.md)** — endpoints, request/response shapes, error model.
+6. **[Testing strategy](./docs/testing.md)** — unit / integration / contract / visual / a11y layers, CI gates.
 
 ## Planned local-dev workflow
 
