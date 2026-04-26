@@ -38,11 +38,14 @@ against it.
 
 ### One-time toolchain
 
+The happy path needs **only Docker** (Engine ≥ 24, Compose v2). Every app —
+web, api, worker — runs in a container; Postgres and Redis are official
+images. No host-side Bun, uv, or Rust toolchain is required to bring up the
+stack.
+
 ```bash
-curl -fsSL https://bun.sh/install | bash         # JS package manager (Bun ≥ 1.1.30)
-curl -LsSf https://astral.sh/uv/install.sh | sh  # Python tooling (uv ≥ 0.5)
-rustup show                                      # picks up rust-toolchain.toml
-# Docker required for Postgres + Redis containers
+docker --version          # ≥ 24
+docker compose version    # v2
 ```
 
 ### From a fresh clone
@@ -50,28 +53,56 @@ rustup show                                      # picks up rust-toolchain.toml
 ```bash
 git clone https://github.com/chazzawarner/Galactic-Guide.git
 cd Galactic-Guide
+cp .env.example .env                 # local overrides; .env.example is committed
 
-docker compose up -d redis postgres        # infra
-bun install                                # JS workspaces
-uv sync                                    # Python workspace (apps/api)
-cargo build --workspace                    # Rust workspace (apps/worker, crates/viewer)
-
-uv run alembic -c apps/api/alembic.ini upgrade head    # database migrations
-
-bun run dev                                # starts web :3000, api :8000, worker
+docker compose up                    # whole stack: web :3000, api :8000, worker, postgres, redis
 ```
+
+The first run builds the per-app images and applies Alembic migrations via a
+one-shot `migrate` service before `api` starts. Subsequent `docker compose up`
+invocations reuse the cached images and the named `pgdata` volume.
 
 The dashboard will be at <http://localhost:3000>. See
 [`docs/architecture.md` § Verification](./docs/architecture.md#verification-fresh-clone)
-for the full smoke-test sequence.
+for the full smoke-test sequence and the per-service container topology.
+
+<details>
+<summary>Running outside Docker (advanced)</summary>
+
+For native-speed iteration on a single app, you can install the host
+toolchains and run that app directly while the rest of the stack stays in
+containers:
+
+```bash
+curl -fsSL https://bun.sh/install | bash         # JS package manager (Bun ≥ 1.1.30)
+curl -LsSf https://astral.sh/uv/install.sh | sh  # Python tooling (uv ≥ 0.5)
+rustup show                                      # picks up rust-toolchain.toml
+
+docker compose up -d postgres redis              # only the dependencies
+bun install && uv sync && cargo build --workspace
+uv run alembic -c apps/api/alembic.ini upgrade head
+bun run dev                                      # web, api, worker on the host
+```
+
+This is opt-in. CI and the canonical contributor flow stay container-based.
+
+</details>
 
 ### Common commands (planned)
 
+Every gate runs inside a container so a laptop and CI execute the same
+environment:
+
 ```bash
-bun run lint           # biome/eslint, ruff, clippy, cargo fmt --check
-bun run test           # vitest, pytest, cargo test
-bun run typecheck      # tsc --noEmit, mypy --strict, cargo check
-bun run build          # turbo build across all apps + packages
+docker compose run --rm web    bun run lint        # biome/eslint, tsc
+docker compose run --rm web    bun run test        # vitest
+docker compose run --rm web    bun run typecheck   # tsc --noEmit
+docker compose run --rm api    uv run ruff check
+docker compose run --rm api    uv run mypy --strict .
+docker compose run --rm api    uv run pytest
+docker compose run --rm worker cargo fmt --check
+docker compose run --rm worker cargo clippy --workspace -- -D warnings
+docker compose run --rm worker cargo test --workspace
 ```
 
 CI gate ordering, oracles, and what each layer covers live in

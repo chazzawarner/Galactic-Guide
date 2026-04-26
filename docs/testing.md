@@ -11,6 +11,34 @@ Companion documents: [`spec.md`](./spec.md) (what we're building),
 [`architecture.md`](./architecture.md) (how it's built), and
 [`api.md`](./api.md) (HTTP contract).
 
+## Running tests
+
+Every gate runs inside a container. The repo's `docker-compose.yml` defines
+`web`, `api`, and `worker` services with all toolchains baked in (see
+[`architecture.md` § Container topology](./architecture.md#container-topology)).
+Contributors and CI invoke gates the same way:
+
+```bash
+docker compose run --rm web    bun run lint
+docker compose run --rm web    bun run test
+docker compose run --rm api    uv run pytest
+docker compose run --rm worker cargo test --workspace
+```
+
+CI uses the production-shaped builds via `docker compose -f docker-compose.yml
+-f docker-compose.ci.yml run --rm <svc> <cmd>` so image layers are
+deterministic and there are no source bind-mounts. A laptop with only Docker
+installed can reproduce any CI failure with the same command.
+
+**Containers vs. testcontainers.** Integration suites still use
+`testcontainers-python` and `testcontainers-rs` to spin up *throwaway*
+Postgres + Redis pairs per test class — that gives hermetic state and
+parallel safety, which the long-lived dev compose stack does not. Treat the
+project compose file as the **runner** (where the test command executes) and
+testcontainers as the **fixture** (where stateful dependencies live). The
+one exception is the worker integration suite — see *Worker integration
+fixture* under `apps/worker` below.
+
 ## Principles
 
 - **Fast feedback over coverage theatre.** Unit tests run in seconds; integration
@@ -116,16 +144,29 @@ Tools: `cargo test` + `proptest` for property tests on the sample-window builder
 
 **Integration (`apps/worker/tests/integration/`)**
 
-- Spin up Postgres + Redis with `testcontainers-rs`, run migrations by invoking
-  `uv run alembic upgrade head` from the FastAPI workspace (Alembic is the
+- **Worker integration fixture (v1 baseline).** Use a shared Docker Compose
+  fixture, not per-suite `testcontainers-rs`. `testcontainers-rs` against
+  Postgres + Redis adds noticeable per-suite cold-start time on Linux CI;
+  the gain in isolation isn't worth it for the worker, which doesn't write
+  shared mutable state across tests beyond row-level idempotency it already
+  asserts. The fixture is `docker compose -f docker-compose.yml -f
+  docker-compose.ci.yml up -d postgres redis migrate` once per CI job.
+  Tests run via `docker compose run --rm worker cargo test --workspace`
+  against that running stack.
+- Migrations are applied by the `migrate` one-shot service (Alembic is the
   single source of migrations per [`architecture.md`](./architecture.md);
-  the worker never declares DDL). Then publish a job to `stream:propagate`
-  and assert that:
+  the worker never declares DDL).
+- Each integration test publishes to `stream:propagate` and asserts that:
   - The worker `XREADGROUP`s and `XACK`s the message.
   - A row appears in `propagated_windows` with the expected `hash`.
   - A `PUBLISH` lands on `result:{job_id}` with the right payload.
 - Idempotency: re-publishing the same job (same `hash`) must not duplicate
-  the row.
+  the row. Tests reset `stream:propagate` and the relevant rows in
+  `propagated_windows` between cases via SQL, not container restart.
+- A test that genuinely needs an isolated DB (e.g. a destructive schema
+  experiment) may opt into `testcontainers-rs` per case; mark such tests
+  with `#[ignore = "isolated-db"]` and run them under a separate
+  `cargo test --ignored` invocation in CI.
 
 **sqlx offline mode.** `cargo sqlx prepare` runs in CI to refresh
 `sqlx-data.json` against an ephemeral Postgres; the resulting file is committed
@@ -263,8 +304,27 @@ gate 5  Playwright visual smoke              (<120 s)
 A red gate blocks merge. Gates within a layer run in parallel; layers run
 serially so a fast lint failure aborts the rest.
 
-CI runner: GitHub Actions on `ubuntu-24.04`. The Playwright job uses the
-prebuilt Microsoft container so the browser binary and OS deps are pinned.
+Each gate is a `docker compose -f docker-compose.yml -f docker-compose.ci.yml
+run --rm <svc> <cmd>` invocation, so the runner host only needs Docker and
+nothing else. Concretely:
+
+```
+gate 1  docker compose run --rm web    bun run lint
+        docker compose run --rm web    bun run typecheck
+        docker compose run --rm api    uv run ruff check && uv run mypy --strict .
+        docker compose run --rm worker cargo fmt --check && cargo clippy --workspace -- -D warnings
+gate 2  docker compose run --rm web    bun run test
+        docker compose run --rm api    uv run pytest tests/unit
+        docker compose run --rm worker cargo test --workspace --lib
+gate 3  docker compose run --rm api    uv run pytest tests/integration
+        docker compose run --rm worker cargo test --workspace --test '*'
+gate 4  docker compose run --rm api    python scripts/check-api-contract.py
+gate 5  docker compose run --rm web    bun run test:e2e
+```
+
+CI runner: GitHub Actions on `ubuntu-24.04`. Gate 5 uses the prebuilt
+Microsoft Playwright container *as the `web` test target*, so the browser
+binary and OS deps are pinned and identical to the local invocation.
 
 ## Determinism playbook
 
@@ -275,8 +335,11 @@ prebuilt Microsoft container so the browser binary and OS deps are pinned.
   the API.
 - **Random seeds.** Rust `proptest` runs with `PROPTEST_CASES=64` and a
   pinned seed; failing seeds are recorded in `proptest-regressions/`.
-- **GPU.** Visual smoke runs only on the official Playwright Linux image.
-  Local runs are not authoritative — only CI snapshots are.
+- **GPU.** Visual smoke runs only on the official Playwright Linux image,
+  invoked via `docker compose run --rm web bun run test:e2e`. The image
+  pin lives in the `web` Dockerfile's e2e target, so a contributor's
+  laptop and CI run the same browser and OS layer. Local runs against
+  host browsers are not authoritative — only CI snapshots are.
 - **DB ordering.** Every integration test that asserts list order also
   pins an `ORDER BY` in the query. No reliance on insertion order.
 
@@ -317,7 +380,7 @@ prebuilt Microsoft container so the browser binary and OS deps are pinned.
   them in CI artefacts? Decision deferred — only matters in M2.
 - **Property-testing budget.** `proptest` and `hypothesis` add CI time; cap at
   64 cases per property for v1, revisit if real bugs slip past.
-- **Worker integration test ergonomics.** `testcontainers-rs` against
-  Postgres + Redis is heavier than its Python counterpart. If startup time
-  exceeds 30 s consistently, fall back to a single shared Docker Compose
-  fixture spun up once per CI job.
+
+(The previous open question on worker integration ergonomics is resolved
+above: shared Docker Compose fixture is the v1 baseline, with opt-in
+`testcontainers-rs` only for tests that genuinely need an isolated DB.)

@@ -44,7 +44,10 @@ Galactic-Guide/
 ├── pyproject.toml              # uv workspace (members = ["apps/api"])
 ├── rust-toolchain.toml         # stable
 ├── .python-version             # 3.12
-├── docker-compose.yml          # redis + postgres for local dev
+├── docker-compose.yml          # whole stack for local dev (web, api, worker, postgres, redis, migrations)
+├── docker-compose.override.yml # dev defaults: bind-mounts, hot reload (auto-loaded)
+├── docker-compose.ci.yml       # CI overrides: production targets, no bind-mounts
+├── .env.example                # committed; copy to .env for local overrides
 │
 ├── apps/
 │   ├── web/                    # Next.js 15 dashboard
@@ -101,11 +104,83 @@ Galactic-Guide/
 
 ### Network topology
 
-`apps/web/next.config.ts` rewrites `/api/*` → `http://localhost:8000/v1/*` so the
-browser only ever talks to a single origin (`localhost:3000`). CORS is therefore
-not configured on FastAPI; the API is intended to be reached via the rewrite
-proxy in dev and an equivalent reverse proxy in any future deployment. This is
-why [`api.md`](./api.md) explicitly excludes a CORS spec.
+`apps/web/next.config.ts` rewrites `/api/*` → `${API_INTERNAL_URL}/v1/*` so
+the browser only ever talks to a single origin (`localhost:3000`). The
+rewrite is server-side (the Next.js server proxies to the backend), so the
+target must resolve from *inside* the `web` container:
+
+- In compose: `API_INTERNAL_URL=http://api:8000` (Docker network DNS).
+- Running outside Docker: `API_INTERNAL_URL=http://localhost:8000`.
+
+Default both in `.env.example`. CORS is therefore not configured on
+FastAPI; the API is intended to be reached via the rewrite proxy in dev
+and an equivalent reverse proxy in any future deployment. This is why
+[`api.md`](./api.md) explicitly excludes a CORS spec.
+
+### Container topology
+
+The entire v1 stack runs under a single `docker compose up`. Only Docker
+Engine ≥ 24 and Compose v2 are required on the host; no Bun, uv, or Rust
+toolchain is needed for the happy path. Each first-party app ships a
+multi-stage Dockerfile with a `dev` target (used by the auto-loaded
+`docker-compose.override.yml`) and a production target (used by
+`docker-compose.ci.yml` and any future deploy).
+
+| Service | Image / Build | Host port | `depends_on` (with condition) | Notes |
+|---|---|---|---|---|
+| `postgres` | `postgres:16` | — | — | Volume `pgdata`; healthcheck `pg_isready -U $POSTGRES_USER`. |
+| `redis` | `redis:7` | — | — | Healthcheck `redis-cli ping`. |
+| `migrate` | `apps/api/Dockerfile` | — | `postgres: service_healthy` | One-shot. Runs `alembic -c apps/api/alembic.ini upgrade head` and exits 0. |
+| `api` | `apps/api/Dockerfile` | 8000 | `postgres: service_healthy`, `redis: service_healthy`, `migrate: service_completed_successfully` | Runs `export_openapi.py` on start, writing to the shared `openapi` volume. Healthcheck `GET /v1/healthz`. |
+| `types-codegen` | `packages/types/Dockerfile` (thin Bun image) | — | `api: service_started` | Watches the `openapi` volume; runs `openapi-typescript` to regenerate `packages/types/src/generated.ts`. Long-running in dev; one-shot in CI. |
+| `worker` | `apps/worker/Dockerfile` | — | `postgres: service_healthy`, `redis: service_healthy`, `migrate: service_completed_successfully` | Reads `stream:propagate`. Built with `SQLX_OFFLINE=true` against the committed `sqlx-data.json` so the image builds without a live Postgres. |
+| `web` | `apps/web/Dockerfile` | 3000 | `api: service_healthy`, `types-codegen: service_started` | Next.js dev server with bind-mounted source for hot reload in dev. |
+
+`crates/viewer` (the legacy Bevy desktop app) is intentionally **not** a
+compose service — it opens a native window and isn't part of the v1 web
+product surface. It stays a workspace member so `cargo test --workspace`
+keeps it building.
+
+**Volumes**
+
+- `pgdata` — durable Postgres data; survives `docker compose down` (only
+  `down -v` clears it).
+- `openapi` — shared `apps/api/openapi.json` between `api` and
+  `types-codegen`; the producer/consumer pipeline replaces an in-process
+  chokidar watcher when running in containers.
+- `cargo-cache`, `bun-cache`, `uv-cache` — named build caches so
+  rebuilds across `docker compose up` invocations stay fast.
+
+**Environment**
+
+Compose reads `.env` (gitignored) at the repo root, falling back to
+`.env.example` (committed). Keys: `POSTGRES_USER`, `POSTGRES_PASSWORD`,
+`POSTGRES_DB`, `DATABASE_URL`, `REDIS_URL`, `OFFLINE`, `PROPTEST_CASES`.
+The `OFFLINE=1` toggle (see *Refresh & retention* below) flows through
+`environment:` to the `api` and `worker` containers unchanged.
+
+**Bake-ins for offline-first first boot**
+
+- `apps/api/data/celestrak-fallback.json` is `COPY`-ed into the `api`
+  image so the first boot of a fresh clone has TLEs even with no
+  internet.
+- `assets/textures/earth.png` is copied into the `web` image's static
+  pipeline at build time (matches the convention in *Reusable assets*
+  below).
+- `sqlx-data.json` is committed and consumed at `worker` image build
+  time via `SQLX_OFFLINE=true`.
+
+**Dev vs. CI compose split**
+
+- `docker-compose.yml` — base file; production-shaped Dockerfile targets,
+  no bind-mounts.
+- `docker-compose.override.yml` — auto-loaded in dev. Switches to `dev`
+  Dockerfile targets, bind-mounts `apps/*/src` and `packages/*/src`,
+  enables Next.js Turbopack dev, FastAPI `--reload`, and `cargo-watch`,
+  and exposes `3000` and `8000` on the host.
+- `docker-compose.ci.yml` — explicit opt-in for CI: `docker compose -f
+  docker-compose.yml -f docker-compose.ci.yml run --rm <svc> <cmd>`.
+  No bind-mounts; deterministic, production-shaped builds.
 
 ## Database (Postgres)
 
@@ -247,43 +322,35 @@ Other planet PNGs stay in `/assets` for later docs use.
 - **OpenAPI cold-start race.** Types must exist before `web#dev` typechecks. Commit an initial `generated.ts` stub; Turbo `dependsOn` handles steady state.
 - **Coordinate axis convention.** Nyx Z<sub>eci</sub> → three.js Y. Pick once, document once.
 - **Legacy Bevy code.** Keeping `crates/viewer` in the workspace means `cargo test --workspace` continues to compile it. If it ever becomes maintenance burden, drop it from default workspace members and require `--package viewer` to opt in.
-- **sqlx compile-time queries.** The worker uses `sqlx::query!` macros, which require either a live `DATABASE_URL` or the offline `sqlx-data.json` file at compile time. Commit `sqlx-data.json` and document the `cargo sqlx prepare` workflow in `apps/worker/README.md` so CI and fresh clones build without needing a running Postgres.
+- **sqlx compile-time queries.** The worker uses `sqlx::query!` macros, which require either a live `DATABASE_URL` or the offline `sqlx-data.json` file at compile time. Commit `sqlx-data.json` and build the `worker` image with `SQLX_OFFLINE=true` so `docker compose up` on a fresh clone builds without needing a running Postgres. Document the `cargo sqlx prepare` workflow in `apps/worker/README.md` for the host-side flow.
 
 ## Verification (fresh clone)
 
 ```bash
 git clone … && cd Galactic-Guide
+cp .env.example .env
 
-# one-time toolchain
-curl -fsSL https://bun.sh/install | bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-rustup show                                  # picks up rust-toolchain.toml
-docker compose up -d redis postgres          # docker-compose.yml ships in the repo
+# whole stack: web :3000, api :8000, worker, postgres, redis, migrations
+docker compose up
 
-# install
-bun install                                  # JS workspaces
-uv sync                                      # Python workspace (apps/api)
-cargo build --workspace                      # Rust worker + viewer
-
-# database
-uv run alembic -c apps/api/alembic.ini upgrade head
-
-# dev (single command starts everything via Turbo)
-bun run dev                                  # web :3000, api :8000, worker
-
-# smoke
+# smoke (in another shell)
 curl http://localhost:8000/v1/healthz
 curl http://localhost:8000/v1/satellites
 curl 'http://localhost:8000/v1/satellites/25544/trajectory?duration=3600&step=10' | jq '.samples | length'   # → 361
 open http://localhost:3000
 
-# CI gates
-bun run lint && bun run test
-cargo test --workspace
-uv run pytest apps/api
+# CI gates (any host with Docker; no Bun/uv/Rust required)
+docker compose run --rm web    bun run lint
+docker compose run --rm web    bun run test
+docker compose run --rm api    uv run pytest
+docker compose run --rm worker cargo test --workspace
 ```
 
-A successful v1 means a fresh clone reaches a working ISS visualization with time controls in under 10 minutes.
+A successful v1 means a fresh clone reaches a working ISS visualization
+with time controls in under 10 minutes — including the first-time image
+build. The acceptance criterion is now meaningfully tighter than the
+host-toolchain workflow it replaces, because most of the original budget
+was Bun / uv / rustup installation time.
 
 ## Next documents
 
