@@ -1,0 +1,17 @@
+{
+  "name": "@galactic/types",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./src/generated.ts",
+  "exports": {
+    ".": "./src/generated.ts"
+  },
+  "files": ["src"],
+  "scripts": {
+    "generate": "openapi-typescript ../../apps/api/openapi.json -o src/generated.ts"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.4.0",
+    "typescript": "^5.6.0"
+  }
+}

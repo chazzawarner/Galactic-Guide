@@ -1,6 +1,6 @@
 # Galactic Guide — Product Requirements Document (v1)
 
-**Status: in progress**
+**Status: confirmed**
 
 Companion documents: [`spec.md`](./spec.md) (detailed feature spec & acceptance criteria),
 [`architecture.md`](./architecture.md) (how it's built), [`api.md`](./api.md) (HTTP contract),
@@ -184,8 +184,8 @@ Post-v1 quantitative targets (performance/load tests, k6 benchmarks) are out of 
 | `docs/architecture.md` | **confirmed** |
 | `docs/api.md` | **confirmed** |
 | `docs/testing.md` | **confirmed** |
-| `docs/prd.md` (this file) | **in progress** |
-| `docs/roadmap.md` | **in progress** |
+| `docs/prd.md` (this file) | **confirmed** |
+| `docs/roadmap.md` | **confirmed** |
 
 This document moves to **confirmed** once the roadmap is confirmed and Milestone 0 is closed. Implementation must conform to any section marked **confirmed**; sections marked **in progress** may still change.
 

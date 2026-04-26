@@ -19,3 +19,23 @@ Cargo.lock
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+
+# Node / Bun
+node_modules/
+.next/
+dist/
+bun.lockb
+
+# Python / uv
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+
+# Environment — copy .env.example to .env for local overrides
+.env
+
+# macOS
+.DS_Store
