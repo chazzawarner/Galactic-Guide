@@ -1,0 +1,20 @@
+# docker-compose.ci.yml — CI overrides.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.ci.yml <cmd>
+# Uses production Dockerfile targets, no bind-mounts, no port exposure.
+
+services:
+  api:
+    build:
+      target: production
+
+  types-codegen:
+    build:
+      target: production
+
+  worker:
+    build:
+      target: production
+
+  web:
+    build:
+      target: production

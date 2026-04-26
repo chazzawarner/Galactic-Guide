@@ -1,0 +1,41 @@
+# docker-compose.override.yml — dev overrides (auto-loaded by docker compose).
+# Switches to dev Dockerfile targets, enables hot reload, and exposes ports.
+
+services:
+  api:
+    build:
+      target: dev
+    volumes:
+      - ./apps/api/src:/app/apps/api/src
+      - uv-cache:/root/.cache/uv
+    ports:
+      - "8000:8000"
+
+  types-codegen:
+    build:
+      target: dev
+    volumes:
+      - openapi:/openapi
+      - ./packages/types/src:/app/packages/types/src
+
+  worker:
+    build:
+      target: dev
+    volumes:
+      - ./apps/worker/src:/app/apps/worker/src
+      - cargo-cache:/usr/local/cargo/registry
+
+  web:
+    build:
+      target: dev
+    volumes:
+      - ./apps/web:/app/apps/web
+      - ./packages:/app/packages
+      - bun-cache:/root/.bun/install/cache
+      # Exclude node_modules from bind-mount so the container's copy is used
+      - /app/apps/web/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      # Enable Turbopack dev server
+      TURBOPACK: "1"

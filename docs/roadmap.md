@@ -1,6 +1,6 @@
 # Galactic Guide — Engineering Roadmap (v1)
 
-**Status: in progress**
+**Status: confirmed**
 
 Companion documents: [`prd.md`](./prd.md) (requirements & goals),
 [`spec.md`](./spec.md) (feature spec & acceptance criteria),
