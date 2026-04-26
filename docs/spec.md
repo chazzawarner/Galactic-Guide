@@ -19,7 +19,7 @@ Galactic Guide is a 3D satellite dashboard that shows where a small set of well-
 - A textured Earth rendered with React Three Fiber + drei, using the existing `assets/textures/earth.png`.
 - Satellite markers drawn at their current positions.
 - Orbit polylines drawn for the selected satellite (one full revolution).
-- Smooth camera (mouse-orbit, zoom).
+- Smooth camera: mouse-orbit and zoom. The camera up-axis is fixed along the ecliptic normal (perpendicular to Earth's orbit around the Sun), so the world keeps a consistent "up" regardless of which satellite is selected. Free-tumble is intentionally not supported in v1.
 
 ### Curated satellite dropdown
 
@@ -35,6 +35,8 @@ The v1 list is exactly five satellites, chosen to span common orbit families and
 
 (If a NORAD ID is decommissioned by the time we ship, it gets swapped for a live equivalent in the same category. The list is meant to stay at five.)
 
+Selection in v1 is via this dropdown only; clicking markers on the globe is deferred to post-v1.
+
 ### Detail panel
 
 When a satellite is selected, the side panel shows TLE-derived classical orbital elements, computed once per TLE refresh:
@@ -47,6 +49,8 @@ When a satellite is selected, the side panel shows TLE-derived classical orbital
 - Mean anomaly (M) at epoch in degrees
 - Orbital period in minutes
 - Epoch (UTC, ISO 8601)
+
+When the on-file TLE epoch is older than 7 days, the panel shows an inline staleness notice (e.g. "TLE is N days old; positions may drift"). SGP4 propagation still runs against the on-file TLE; the notice is informational only.
 
 Plus the satellite's name and NORAD ID.
 
@@ -69,6 +73,8 @@ The simulation time drives both marker positions and the Earth's rotation (so th
 - No multi-user features.
 - No mobile or tablet layout work — desktop only.
 - No simultaneous orbit polylines — only the selected satellite gets a polyline; the other four are propagated for their marker positions only.
+- No click-to-select on the globe (selection is via the dropdown).
+- No light theme or theme toggle (dark-only in v1).
 
 ## Accessibility
 
@@ -103,7 +109,7 @@ A v1 build is considered shippable when:
 
 ### First-time view
 1. User opens `localhost:3000`.
-2. Globe renders with all five satellites as markers; ISS is selected by default.
+2. Globe renders with all five satellites as markers. On the user's first visit, **ISS** is selected by default. On subsequent visits, the last-selected satellite is restored from `localStorage`; if the stored NORAD ID is not in the curated five (e.g. the list changed between releases), the dashboard falls back to ISS.
 3. ISS orbit polyline is drawn.
 4. Detail panel shows ISS orbital elements.
 5. Time controls show "1x" and a live-updating UTC clock.
@@ -118,14 +124,6 @@ A v1 build is considered shippable when:
 2. Markers begin rotating noticeably; Earth rotates underneath them.
 3. User clicks pause; everything freezes mid-flight.
 4. User clicks "Now"; simulation time snaps to wall clock; speed remains at 1000x but is paused.
-
-## Open questions (resolve before PRD)
-
-- **Selection method.** Should we **also** support click-to-select on the globe in v1, in addition to the dropdown?
-- **Globe interaction.** Free-orbit camera, or constrained to "Earth always upright"?
-- **Theme.** Dark-only for v1 (likely), or light/dark toggle?
-- **Default satellite.** ISS (recognizable) or randomized from the five (avoids the appearance that ISS is special)?
-- **What happens if a TLE is older than X days?** Show a staleness warning, or just propagate anyway?
 
 ## Glossary
 
