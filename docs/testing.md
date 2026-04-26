@@ -95,8 +95,8 @@ endpoint-table drift check (gate 4) only.
 **Unit (`cargo test`)**
 
 - Message-payload (de)serialization round-trip.
-- Hash equality with the FastAPI implementation (golden vector committed to
-  both repos: identical inputs → identical hex digest).
+- Hash equality with the FastAPI implementation (golden vector committed
+  alongside both implementations: identical inputs → identical hex digest).
 - Sample-window builder: given a propagator output, assert sample count,
   monotonic `t`, and `t` always a multiple of `step_s`.
 
@@ -115,9 +115,11 @@ Tools: `cargo test` + `proptest` for property tests on the sample-window builder
 
 **Integration (`apps/worker/tests/integration/`)**
 
-- Spin up Postgres + Redis with `testcontainers-rs`, run migrations via the
-  embedded SQL (or by shelling out to `alembic`), publish a job to
-  `stream:propagate`, assert that:
+- Spin up Postgres + Redis with `testcontainers-rs`, run migrations by invoking
+  `uv run alembic upgrade head` from the FastAPI workspace (Alembic is the
+  single source of migrations per [`architecture.md`](./architecture.md);
+  the worker never declares DDL). Then publish a job to `stream:propagate`
+  and assert that:
   - The worker `XREADGROUP`s and `XACK`s the message.
   - A row appears in `propagated_windows` with the expected `hash`.
   - A `PUBLISH` lands on `result:{job_id}` with the right payload.
@@ -177,9 +179,9 @@ in unit tests — that's the visual smoke layer.
 
 ### `packages/ui`
 
-- shadcn components are upstream-tested. We add only **storybook-style**
-  smoke (component renders without throwing, prop variants compile) via
-  vitest.
+- shadcn components are upstream-tested. We add one vitest render assertion
+  per component — "mounts without throwing, prop variants type-check." No
+  Storybook in v1.
 
 ### `packages/types`
 
@@ -222,7 +224,7 @@ The single source of truth for each numerical claim:
 | SGP4 position/velocity | `sgp4` Python package (Vallado-derived) |
 | Classical orbital elements from TLE | `sgp4` Python package |
 | GMST | IAU 1982 reference values (Astronomical Almanac) |
-| Visual rendering | Playwright canvas pixel sampling on Chromium / Linux |
+| Visual rendering (smoke only) | Playwright non-blank canvas check (≥ 2 distinct corner-pixel colours) on Chromium / Linux. **Not** pixel-diff snapshots — those are M2. |
 
 `satellite.js` is **not** an oracle — it's a parity check (browser-side
 implementation should agree with the API within wider tolerances). Diverging
@@ -234,11 +236,11 @@ Every spec.md acceptance criterion has a home:
 
 | AC | Test |
 |----|------|
-| 1 (ISS position within 0.1°) | `apps/worker/tests/accuracy/iss_test.rs` — assert against `sgp4` golden at `t=0` |
+| 1 (ISS position within 0.1°) | `apps/worker/tests/accuracy/iss_test.rs` — assert against `sgp4` golden at `t=0`. Test bound (1 km / 1 m/s) is intentionally tighter than the 0.1° spec criterion (~12 km at LEO). |
 | 2 (orbital elements to 4 sig figs) | `apps/api/tests/unit/test_elements.py` parametrised over all 5 satellites |
 | 3 (≥50 fps at 1000x for 60 s) | Automated: Playwright dev-only FPS DOM check on a 5 s sample. Manual: full 60 s observation pre-release (same pattern as AC #6). Pixel-diff perf trace is M2. |
-| 4 (geographic correctness) | `apps/web/__tests__/unit/test_gmst.py`-equivalent in vitest, plus a Playwright check that ISS sub-satellite point lines up with a fixed-time fixture |
-| 5 (controls within one frame) | `<TimeControls/>` component test |
+| 4 (geographic correctness) | `apps/web/__tests__/unit/gmst.test.ts` (vitest), plus a Playwright check that the ISS sub-satellite point lines up with a fixed-time fixture |
+| 5 (controls within one frame) | `<TimeControls/>` vitest component test asserts state changes synchronously on click; React's synchronous re-render guarantee covers the "one frame" rendering claim, so no extra Playwright check is needed. |
 | 6 (cold-start <10 min) | Documented in `docs/architecture.md` § Verification; not automated in v1 |
 | 7 (offline development) | `apps/api/tests/integration/test_offline.py` runs the test suite with `OFFLINE=1` set |
 
@@ -290,13 +292,22 @@ prebuilt Microsoft container so the browser binary and OS deps are pinned.
 
 ## Maintenance
 
+- **Fixtures.** Shared test fixtures live at `apps/{api,web,worker}/tests/fixtures/`.
+  The canonical TLE snapshot used by both the offline-fallback runtime path and
+  the integration suite is `apps/api/data/celestrak-fallback.json` — single
+  source of truth, not duplicated into per-test files.
 - **Goldens.** `apps/worker/tests/golden/sgp4/*.json` are regenerated only via
   `scripts/regen-goldens.py`. Reviewers must approve any diff to a golden
   file in the same PR.
 - **API examples.** Any change to a Pydantic response model must touch the
   matching example in [`api.md`](./api.md) and (in M2) the contract test fixture.
+- **Flaky-test workflow.** A test that fails intermittently is quarantined
+  within 24 hours via a skip marker (`pytest.mark.skip(reason=…)`,
+  `it.skip(…)`, or `#[ignore]`) plus a tracking issue. The skip carries a
+  7-day fix SLA; if unfixed by then, the test is reverted, not retried. There
+  is no permanent "flaky" bucket and no auto-retry on CI.
 - **Test ownership.** A failing test is owned by the author of the touched
-  code, not the test author. No "flaky test triage" backlog.
+  code, not the test author.
 
 ## Open questions
 
