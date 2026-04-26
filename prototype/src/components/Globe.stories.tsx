@@ -4,12 +4,16 @@ import { issTrajectory } from "@/data/trajectory";
 import { useSimClock } from "@/lib/simClock";
 import { TimeControls } from "./TimeControls";
 
-function Live() {
+function Live({ showReferences = false }: { showReferences?: boolean }) {
   const clock = useSimClock(Date.parse(issTrajectory.start_at));
   return (
     <div className="flex h-screen w-screen flex-col bg-[var(--color-bg)]">
       <div className="flex-1">
-        <Globe trajectory={issTrajectory} simTimeMs={clock.simTimeMs} />
+        <Globe
+          trajectory={issTrajectory}
+          simTimeMs={clock.simTimeMs}
+          showReferences={showReferences}
+        />
       </div>
       <div className="border-t border-[var(--color-border)] p-3">
         <TimeControls
@@ -36,4 +40,10 @@ type Story = StoryObj<typeof Globe>;
 
 export const ISSOrbit: Story = {
   render: () => <Live />,
+};
+
+// Visual axis-orientation check. At GMST=0 the red marker (Greenwich) should
+// sit on the prime meridian on the texture; green = north pole; blue = ±180°.
+export const ReferenceMarkers: Story = {
+  render: () => <Live showReferences />,
 };

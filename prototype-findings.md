@@ -19,6 +19,30 @@
 - **Orbit polyline aesthetic.** _Pending — colour, thickness, opacity, glow._
 - **1000× feel.** _Pending — does it look smooth, dizzy, or broken?_
 
+## Resolved (surfaced during scaffolding)
+
+> **shadcn/ui.** Deferred until v1.
+>
+> Reasoning: the four prototype components (`TimeControls`, `SatellitePanel`,
+> `Globe`, `Dashboard`) are small enough that a shadcn registry would be
+> ceremonial — the only primitives that would have benefited are `Button` and
+> `Card`, each used in one place. The handoff stack lists shadcn so v1
+> primitives match, but the prototype's job is to surface UX questions and
+> none of those questions require the canonical shadcn API. v1 should run
+> `npx shadcn@latest init` against `packages/ui` as part of the real monorepo
+> conversion. Custom Tailwind classes here use the `@theme` tokens declared in
+> `prototype/src/index.css` so the palette transfers.
+
+> **Earth texture orientation.** Verified analytically; visual check available.
+>
+> Reasoning: derivation chain (`SphereGeometry` UV layout + ECI/scene mapping
+> + GMST sign) lands Greenwich at scene +X at GMST=0 — derivation comment in
+> `Globe.tsx`. The `Globe → ReferenceMarkers` story renders red/green/blue
+> markers parented to the Earth mesh at Greenwich, north pole, and the ±180°
+> meridian; if the texture seam ever moves (or the source Earth PNG is
+> swapped), open that story and confirm the markers land on the right
+> coastlines before the orbit polyline can be trusted.
+
 ## Format for new entries
 
 Append decisions in the form prescribed by the handoff:
