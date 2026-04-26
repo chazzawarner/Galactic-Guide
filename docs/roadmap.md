@@ -184,7 +184,7 @@ Plus: all five satellites are present in the `satellites` table, and at least on
 **Golden vectors & accuracy test**
 
 - `scripts/regen-goldens.py` generates `apps/worker/tests/golden/sgp4/{norad_id}.json` for each of the five curated satellites from the Python `sgp4` package at fixed offsets `t ∈ {0, 60, 600, 3600}` seconds.
-- `apps/worker/tests/accuracy/` Rust tests load each golden file, run Nyx SGP4 against the same TLE, and assert position within **1 km** and velocity within **1 m/s** at each offset.
+- `apps/worker/tests/accuracy/` Rust tests load each golden file, run Nyx SGP4 against the same TLE, and assert position within **1 km** and velocity within **1 m/s** at each offset. The 1 km / 1 m/s bound is intentionally tighter than AC #1's 0.1° angular-separation criterion (0.1° ≈ 12 km of arc at ISS altitude), so passing this test implies the AC is satisfied (per [`testing.md` § Acceptance-criteria mapping](./testing.md#acceptance-criteria-mapping)).
 - Goldens are committed; regeneration requires a reviewer-approved PR diff. CI does not regenerate them.
 
 **Unit tests**
@@ -204,7 +204,7 @@ Plus: all five satellites are present in the `satellites` table, and at least on
 docker compose run --rm worker cargo test --workspace
 ```
 
-passes, including the propagation accuracy tests. The ISS position at `t = 0` (epoch) must be within **1 km** of the Python `sgp4` reference.
+passes, including the propagation accuracy tests. The ISS position at `t = 0` (epoch) must be within **1 km** of the Python `sgp4` reference. A 1 km bound at epoch is sufficient coverage for AC #1 (0.1° ≈ 12 km at ISS altitude), as noted in [`testing.md` § Acceptance-criteria mapping](./testing.md#acceptance-criteria-mapping).
 
 ---
 
@@ -365,7 +365,7 @@ For each of the eight ACs in [`spec.md`](./spec.md) and [`prd.md`](./prd.md), co
 
 | AC | Covered by |
 |----|-----------|
-| 1 — ISS position accuracy < 0.1° | Worker propagation accuracy test (golden vector at `t=0`) |
+| 1 — ISS position accuracy < 0.1° | Worker propagation accuracy test: position within 1 km at `t=0` (epoch) vs. Python `sgp4` golden. The 1 km bound is intentionally tighter than 0.1° (≈ 12 km at ISS altitude). |
 | 2 — Orbital elements to 4 sig figs | API unit test: TLE parser vs. `sgp4` reference |
 | 3 — ≥ 50 fps at 1000× for 60 s | Playwright perf check in visual smoke suite |
 | 4 — Geographic correctness ~1° | Visual smoke: known-time sub-satellite point check |
