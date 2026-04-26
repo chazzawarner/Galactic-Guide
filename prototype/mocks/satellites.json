@@ -1,0 +1,32 @@
+[
+  {
+    "norad_id": 25544,
+    "name": "ISS (ZARYA)",
+    "kind": "station",
+    "description": "International Space Station — crewed LEO laboratory."
+  },
+  {
+    "norad_id": 20580,
+    "name": "Hubble Space Telescope",
+    "kind": "telescope",
+    "description": "Optical/UV observatory, LEO."
+  },
+  {
+    "norad_id": 44713,
+    "name": "Starlink-1007",
+    "kind": "comms",
+    "description": "Representative Starlink shell-1 broadband satellite."
+  },
+  {
+    "norad_id": 32260,
+    "name": "GPS IIR-19 (PRN 11)",
+    "kind": "gps",
+    "description": "GPS Block IIR-M navigation satellite, MEO."
+  },
+  {
+    "norad_id": 33591,
+    "name": "NOAA-19",
+    "kind": "weather",
+    "description": "Polar-orbiting weather satellite."
+  }
+]
