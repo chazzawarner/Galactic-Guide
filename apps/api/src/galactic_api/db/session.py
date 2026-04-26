@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from collections.abc import AsyncGenerator
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -38,4 +39,4 @@ async def check_postgres(engine: AsyncEngine) -> None:
     Raises on any connection or query failure.
     """
     async with engine.connect() as conn:
-        await conn.execute(__import__("sqlalchemy").text("SELECT 1"))
+        await conn.execute(text("SELECT 1"))
