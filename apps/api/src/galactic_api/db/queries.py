@@ -29,4 +29,3 @@ async def upsert_tle(
         ),
         {"norad_id": norad_id, "line1": line1, "line2": line2, "epoch": epoch},
     )
-    await session.commit()

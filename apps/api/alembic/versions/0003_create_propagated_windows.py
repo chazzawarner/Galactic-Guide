@@ -12,6 +12,7 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects.postgresql import JSONB
 
 # revision identifiers, used by Alembic.
 revision: str = "0003"
@@ -31,7 +32,7 @@ def upgrade() -> None:
         sa.Column("step_s", sa.Integer(), nullable=False),
         sa.Column("frame", sa.Text(), nullable=False),
         sa.Column("include_velocity", sa.Boolean(), nullable=False, server_default=sa.text("true")),
-        sa.Column("samples", sa.JSON(), nullable=False),
+        sa.Column("samples", JSONB(), nullable=False),
         sa.Column(
             "computed_at",
             sa.DateTime(timezone=True),

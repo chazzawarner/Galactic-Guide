@@ -66,7 +66,12 @@ async def _ingest_entries(
     session: AsyncSession,
     entries: list[FallbackEntry],
 ) -> None:
-    """Upsert a list of TLE entries into the database."""
+    """Upsert a list of TLE entries into the database.
+
+    Commits once after all entries are processed.  If an individual upsert
+    fails the session is rolled back so subsequent entries can proceed in a
+    clean state; the failed entry is logged and skipped.
+    """
     for entry in entries:
         try:
             epoch = _parse_tle_epoch(entry["line1"])
@@ -79,6 +84,14 @@ async def _ingest_entries(
             )
         except Exception:
             logger.exception("Failed to upsert TLE for NORAD %d", entry["norad_id"])
+            try:
+                await session.rollback()
+            except Exception:
+                logger.exception(
+                    "Failed to roll back session after upsert failure for NORAD %d",
+                    entry["norad_id"],
+                )
+    await session.commit()
 
 
 async def _fetch_from_celestrak(norad_id: int, client: httpx.AsyncClient) -> FallbackEntry | None:
@@ -110,7 +123,8 @@ async def run_tle_ingest(engine: AsyncEngine) -> None:
 
     Uses the offline fallback when:
     - ``OFFLINE=1`` is set in the environment, **or**
-    - CelesTrak returns an error for all satellites.
+    - CelesTrak returns an error for a particular satellite (per-satellite fallback), **or**
+    - CelesTrak returns an error for all satellites (full fallback).
 
     Failures are logged but never raised so that a transient CelesTrak outage
     does not prevent the API from starting.
@@ -119,18 +133,24 @@ async def run_tle_ingest(engine: AsyncEngine) -> None:
 
     if offline:
         logger.info("OFFLINE=1 — loading TLEs from fallback snapshot")
-        entries = _load_fallback()
+        entries: list[FallbackEntry] = _load_fallback()
     else:
+        fallback_by_norad = {e["norad_id"]: e for e in _load_fallback()}
         entries = []
         async with httpx.AsyncClient() as client:
             for norad_id in CURATED_NORAD_IDS:
                 entry = await _fetch_from_celestrak(norad_id, client)
                 if entry is not None:
                     entries.append(entry)
-
-        if not entries:
-            logger.warning("CelesTrak fetch returned no entries — falling back to snapshot")
-            entries = _load_fallback()
+                else:
+                    # Fall back to the committed snapshot for this satellite so
+                    # we always have at least one TLE row per satellite.
+                    fb = fallback_by_norad.get(norad_id)
+                    if fb is not None:
+                        logger.info(
+                            "Using fallback TLE for NORAD %d (CelesTrak unavailable)", norad_id
+                        )
+                        entries.append(fb)
 
     async with AsyncSession(engine) as session:
         await _ingest_entries(session, entries)

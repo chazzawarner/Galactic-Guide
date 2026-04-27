@@ -11,8 +11,7 @@ import asyncio
 import logging
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Request, Response
 
 from galactic_api.db.session import check_postgres
 from galactic_api.models.health import Checks, HealthResponse
@@ -21,7 +20,12 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-_VERSION = "0.1.0"
+try:
+    from importlib.metadata import version as _pkg_version
+
+    _VERSION = _pkg_version("galactic-api")
+except Exception:
+    _VERSION = "0.1.0"
 
 
 async def _check_redis_health(request: Request) -> str:
@@ -47,10 +51,11 @@ async def _check_postgres_health(request: Request) -> str:
 @router.get(
     "/healthz",
     response_model=HealthResponse,
+    responses={503: {"model": HealthResponse}},
     summary="Liveness and readiness probe",
     tags=["ops"],
 )
-async def healthz(request: Request) -> JSONResponse:
+async def healthz(request: Request, response: Response) -> HealthResponse:
     """Return 200 when both dependencies are healthy; 503 when degraded.
 
     Both checks run concurrently via :func:`asyncio.gather`.
@@ -62,11 +67,11 @@ async def healthz(request: Request) -> JSONResponse:
     )
 
     overall = "ok" if pg_status == "ok" and redis_status == "ok" else "degraded"
-    payload = HealthResponse(
+    if overall != "ok":
+        response.status_code = 503
+    return HealthResponse(
         status=overall,
         checks=Checks(postgres=pg_status, redis=redis_status),
         version=_VERSION,
         now=datetime.now(tz=UTC).isoformat(),
     )
-    status_code = 200 if overall == "ok" else 503
-    return JSONResponse(content=payload.model_dump(), status_code=status_code)
