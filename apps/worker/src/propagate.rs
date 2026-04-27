@@ -124,7 +124,7 @@ mod tests {
         let samples =
             propagate_window("ISS", ISS_LINE1, ISS_LINE2, &start, 3600, 10, true).unwrap();
         assert_eq!(samples[0].t, 0, "first t must be 0");
-        assert_eq!(*samples.last().unwrap(), samples[360]);
+        assert_eq!(samples.len() - 1, 360, "last index must be 360 for 361 samples");
         assert_eq!(samples.last().unwrap().t, 3600, "last t must equal duration_s");
         for (i, s) in samples.iter().enumerate() {
             assert_eq!(s.t, i as i64 * 10, "t[{i}] must be {}", i * 10);

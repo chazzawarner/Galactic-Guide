@@ -29,13 +29,15 @@ impl Config {
             // Use the OS hostname via gethostname syscall as a default worker name.
             // SAFETY: gethostname is a well-known POSIX function; the buffer is
             // sized to HOST_NAME_MAX (255) + 1 null terminator.
+            // gethostname returns 0 on success, -1 on error.
             #[cfg(unix)]
             {
                 let mut buf = [0u8; 256];
-                let len = unsafe {
+                let rc = unsafe {
                     libc::gethostname(buf.as_mut_ptr() as *mut libc::c_char, buf.len())
                 };
-                if len == 0 {
+                if rc == 0 {
+                    // Find the NUL terminator and convert to a Rust String.
                     let nul = buf.iter().position(|&b| b == 0).unwrap_or(buf.len());
                     String::from_utf8_lossy(&buf[..nul]).into_owned()
                 } else {
