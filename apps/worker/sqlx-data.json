@@ -1,1 +1,6 @@
-{}
+{
+  "_note": "This file is not used by the worker in v1 because db.rs uses sqlx::query (runtime) instead of sqlx::query! (compile-time macro). If sqlx::query! macros are added in future, run: DATABASE_URL=<url> cargo sqlx prepare --workspace from the repo root to regenerate this file.",
+  "db": "PostgreSQL",
+  "queries": []
+}
+

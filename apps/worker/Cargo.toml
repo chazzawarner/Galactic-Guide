@@ -3,16 +3,41 @@ name = "worker"
 version = "0.1.0"
 edition = "2021"
 
+# Expose worker modules as a library so integration tests can call `worker::run` etc.
+[lib]
+name = "worker_lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "worker"
+path = "src/main.rs"
+
 [dependencies]
 tokio = { version = "1", features = ["full"] }
 redis = { version = "0.27", features = ["tokio-comp", "streams"] }
-sqlx = { version = "0.8", features = ["postgres", "runtime-tokio", "macros", "uuid"] }
+# sqlx: json feature for JSONB, chrono for DateTime binds.
+sqlx = { version = "0.8", features = ["postgres", "runtime-tokio", "macros", "uuid", "chrono", "json"] }
+# nyx-space is the worker's astrodynamics library (architecture.md tech stack).
+# v1 uses SGP4 from TLE only — no ANISE kernel downloads needed.
 nyx-space = "1.1.2"
+# sgp4 crate provides the Vallado SGP4 analytical propagator used in v1.
+# nyx-space 1.1.2 is a numerical integrator and does not ship SGP4; sgp4 fills that gap.
+sgp4 = { version = "2.4.0", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 uuid = { version = "1", features = ["v7"] }
 sha2 = "0.10"
+hex = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # nyx-space 1.1.2 → indicatif 0.16.2 → console ">=0.9.1,<1.0.0" (default-features=false).
 # Cargo resolves that range to 0.16.x where `std` is non-default; pin with std so the
 # feature union restores Term/Style symbols that indicatif expects.
 console = { version = "0.16", features = ["std"] }
+libc = "0.2"
+
+[dev-dependencies]
+proptest = "1"
+futures-util = "0.3"
